@@ -23,7 +23,18 @@ export default function ManagerDashboard() {
   const [exportFormat, setExportFormat] = useState('xlsx');
   const [exportWeekFrom, setExportWeekFrom] = useState('');
   const [exportWeekTo, setExportWeekTo] = useState('');
+  const [exportMonth, setExportMonth] = useState('');
   const weeks = weekOptions(16);
+
+  // Generate last 12 months as YYYY-MM options
+  const monthOptions = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - i);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    return { value, label };
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -93,8 +104,12 @@ export default function ManagerDashboard() {
     try {
       const params = new URLSearchParams({ format: exportFormat });
       if (filters.user_id) params.set('user_id', filters.user_id);
-      if (exportWeekFrom) params.set('week_from', exportWeekFrom);
-      if (exportWeekTo) params.set('week_to', exportWeekTo);
+      if (exportMonth) {
+        params.set('month', exportMonth);
+      } else {
+        if (exportWeekFrom) params.set('week_from', exportWeekFrom);
+        if (exportWeekTo)   params.set('week_to',   exportWeekTo);
+      }
 
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/export?${params}`, {
@@ -212,18 +227,36 @@ export default function ManagerDashboard() {
 
       {/* Export panel */}
       <div className="card p-4 mb-6 border-dashed border-2 border-gray-200">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-semibold text-gray-700">📤 Export Data</span>
+          <span className="text-xs text-gray-400">(Excel includes a Monthly Dashboard as the first sheet)</span>
         </div>
+
+        {/* Month quick-filter */}
+        <div className="flex items-center gap-2 mb-3 mt-2">
+          <span className="text-xs font-medium text-gray-600 shrink-0">Filter by Month:</span>
+          <select
+            className="input text-sm max-w-[220px]"
+            value={exportMonth}
+            onChange={e => { setExportMonth(e.target.value); if (e.target.value) { setExportWeekFrom(''); setExportWeekTo(''); } }}
+          >
+            <option value="">All months (or use week range below)</option>
+            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          {exportMonth && (
+            <button onClick={() => setExportMonth('')} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-end gap-3">
-          <div>
+          <div className={exportMonth ? 'opacity-40 pointer-events-none' : ''}>
             <label className="label text-xs">From Week</label>
             <select className="input text-sm w-44" value={exportWeekFrom} onChange={e => setExportWeekFrom(e.target.value)}>
               <option value="">Earliest</option>
               {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
             </select>
           </div>
-          <div>
+          <div className={exportMonth ? 'opacity-40 pointer-events-none' : ''}>
             <label className="label text-xs">To Week</label>
             <select className="input text-sm w-44" value={exportWeekTo} onChange={e => setExportWeekTo(e.target.value)}>
               <option value="">Latest</option>

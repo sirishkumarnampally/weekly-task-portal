@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -14,6 +14,11 @@ export default function ManageUsers() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  // Import state
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -28,12 +33,7 @@ export default function ManageUsers() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const openAdd = () => {
-    setEditingUser(null);
-    setForm(emptyForm);
-    setModalOpen(true);
-  };
-
+  const openAdd = () => { setEditingUser(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (user) => {
     setEditingUser(user);
     setForm({ name: user.name, email: user.email, role: user.role, password: '' });
@@ -73,10 +73,54 @@ export default function ManageUsers() {
     }
   };
 
+  // ── Download import template ─────────────────────────────────────────────
+  const downloadTemplate = async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/users/import/template', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'user_import_template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Handle Excel file upload ──────────────────────────────────────────────
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';           // reset input so same file can be re-selected
+
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await axios.post('/api/users/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResult(data);
+      if (data.created.length) {
+        toast.success(`${data.created.length} user${data.created.length > 1 ? 's' : ''} imported`);
+        fetchUsers();
+      } else {
+        toast.error('No new users were created');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Users</h1>
@@ -87,6 +131,73 @@ export default function ManageUsers() {
         </button>
       </div>
 
+      {/* Excel Import Panel */}
+      <div className="card p-5 mb-6 border-2 border-dashed border-blue-200 bg-blue-50/40">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">📥</span>
+          <h2 className="font-semibold text-gray-800">Bulk Import Users from Excel</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload an <strong>.xlsx</strong> file with columns: <code className="bg-white px-1 py-0.5 rounded border text-xs">Name</code>&nbsp;
+          <code className="bg-white px-1 py-0.5 rounded border text-xs">Email</code>&nbsp;
+          <code className="bg-white px-1 py-0.5 rounded border text-xs">Role</code>&nbsp;
+          <code className="bg-white px-1 py-0.5 rounded border text-xs">Password</code>.
+          Role defaults to <em>member</em>; Password defaults to <em>Welcome@123</em> if blank.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={downloadTemplate}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <span>⬇️</span> Download Template
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="btn-primary flex items-center gap-2 text-sm"
+          >
+            {importing
+              ? <><span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Importing...</>
+              : <><span>📂</span> Choose Excel File</>}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleImport}
+          />
+        </div>
+
+        {/* Import result summary */}
+        {importResult && (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-medium text-gray-700">{importResult.message}</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Created', items: importResult.created, color: 'emerald' },
+                { label: 'Skipped', items: importResult.skipped, color: 'yellow' },
+                { label: 'Errors',  items: importResult.errors,  color: 'red' },
+              ].map(({ label, items, color }) => items.length > 0 && (
+                <div key={label} className={`bg-${color}-50 border border-${color}-200 rounded-lg p-3`}>
+                  <p className={`text-xs font-semibold text-${color}-700 mb-1`}>{label} ({items.length})</p>
+                  <ul className="space-y-0.5">
+                    {items.slice(0, 5).map((item, i) => (
+                      <li key={i} className="text-xs text-gray-600 truncate">
+                        {item.name || item.email || JSON.stringify(item.row).slice(0, 40)}
+                        {item.reason && <span className="text-gray-400"> — {item.reason}</span>}
+                      </li>
+                    ))}
+                    {items.length > 5 && <li className="text-xs text-gray-400">+{items.length - 5} more</li>}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Users Table */}
       <div className="card overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -108,8 +219,8 @@ export default function ManageUsers() {
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
-                        {u.name.charAt(0)}
+                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                        {u.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-medium text-gray-900">{u.name}</span>
                     </div>
@@ -117,9 +228,7 @@ export default function ManageUsers() {
                   <td className="px-5 py-3 text-gray-600">{u.email}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      u.role === 'manager'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
+                      u.role === 'manager' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                     }`}>
                       {u.role === 'manager' ? '👔 Manager' : '👤 Member'}
                     </span>
@@ -128,20 +237,23 @@ export default function ManageUsers() {
                   <td className="px-5 py-3">
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEdit(u)} className="text-xs btn-secondary py-1 px-3">Edit</button>
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="text-xs btn-danger py-1 px-3"
-                      >Delete</button>
+                      <button onClick={() => setDeleteTarget(u)} className="text-xs btn-danger py-1 px-3">Delete</button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr><td colSpan={5} className="text-center py-12 text-gray-400">No users found</td></tr>
+              )}
             </tbody>
           </table>
         )}
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+          {users.length} user{users.length !== 1 ? 's' : ''} total
+        </div>
       </div>
 
-      {/* User Modal */}
+      {/* User Add/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
