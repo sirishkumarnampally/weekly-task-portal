@@ -64,8 +64,9 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {user?.role === 'manager' ? (
           <>
-            <NavItem to="/manager" icon="📊" label="Dashboard" />
-            <NavItem to="/users" icon="👥" label="Manage Users" />
+            <NavItem to="/manager"   icon="📊" label="Dashboard" />
+            <NavItem to="/capacity"  icon="📈" label="Capacity Report" />
+            <NavItem to="/users"     icon="👥" label="Manage Users" />
           </>
         ) : (
           <>

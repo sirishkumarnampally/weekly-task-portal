@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const TEAMS = ['VPM', 'CWGW'];
-const emptyForm = { name: '', email: '', role: 'member', team: 'VPM', password: '' };
+const emptyForm = { name: '', email: '', role: 'member', team: 'VPM', dept: '', password: '' };
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -37,7 +37,7 @@ export default function ManageUsers() {
   const openAdd = () => { setEditingUser(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (user) => {
     setEditingUser(user);
-    setForm({ name: user.name, email: user.email, role: user.role, team: user.team || 'VPM', password: '' });
+    setForm({ name: user.name, email: user.email, role: user.role, team: user.team || 'VPM', dept: user.dept || '', password: '' });
     setModalOpen(true);
   };
 
@@ -46,7 +46,7 @@ export default function ManageUsers() {
     setSaving(true);
     try {
       if (editingUser) {
-        const payload = { name: form.name, email: form.email, role: form.role };
+        const payload = { name: form.name, email: form.email, role: form.role, dept: form.dept };
         if (form.password) payload.password = form.password;
         await axios.put(`/api/users/${editingUser.id}`, payload);
         toast.success('User updated');
@@ -296,6 +296,10 @@ export default function ManageUsers() {
                     {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="label">Dept / Role Code <span className="text-gray-400 font-normal">(shown in capacity report, e.g. AMO, PJ, Infra)</span></label>
+                <input type="text" className="input" placeholder="e.g. AMO" value={form.dept} onChange={e => set('dept', e.target.value)} />
               </div>
               <div>
                 <label className="label">{editingUser ? 'New Password (leave blank to keep)' : 'Password'}</label>

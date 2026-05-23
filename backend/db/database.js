@@ -41,11 +41,24 @@ db.exec(`
 
 // Migrations — safe to run on existing DBs
 try { db.exec(`ALTER TABLE users ADD COLUMN team TEXT NOT NULL DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN dept TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE tasks ADD COLUMN task_type TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE tasks ADD COLUMN requester TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE tasks ADD COLUMN week_no INTEGER DEFAULT 0`); } catch {}
 try { db.exec(`ALTER TABLE tasks ADD COLUMN owner TEXT DEFAULT ''`); } catch {}
 try { db.exec(`ALTER TABLE tasks ADD COLUMN team_type TEXT DEFAULT ''`); } catch {}
+
+// Capacity table: available hours and leave per user per week
+db.exec(`
+  CREATE TABLE IF NOT EXISTS capacity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week_start_date TEXT NOT NULL,
+    available_hours REAL DEFAULT 0,
+    leave_hours REAL DEFAULT 0,
+    UNIQUE(user_id, week_start_date)
+  );
+`);
 
 // Seed demo users if table is empty
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
