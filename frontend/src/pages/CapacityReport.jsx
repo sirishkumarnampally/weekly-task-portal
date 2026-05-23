@@ -46,6 +46,7 @@ function WeekBlock({ week, onEditCapacity }) {
             </td>
             <td className="bg-slate-700 text-slate-200 px-2 py-1.5 border border-slate-800 text-[10px]" colSpan={1}>
               {week.dateRange}
+              <span className="ml-2 text-slate-400">({week.workingDays} working days · {week.workingDays * 9}h cap)</span>
             </td>
             <td className="bg-blue-700 text-white font-bold text-center border border-blue-800 text-[10px]" colSpan={3}>
               Tasks
@@ -162,6 +163,7 @@ function MonthlyBlock({ monthly, monthDateRange, onEditCapacity }) {
             </td>
             <td className="bg-slate-700 text-slate-200 px-2 py-1.5 border border-slate-800 text-[10px]">
               {monthDateRange}
+              <span className="ml-2 text-slate-400">(9 hrs/day · Mon–Fri)</span>
             </td>
             <td className="bg-blue-700 text-white font-bold text-center border border-blue-800 text-[10px]" colSpan={3}>Tasks</td>
             <td className="bg-indigo-700 text-white font-bold text-center border border-indigo-800 text-[10px]" colSpan={2}>Total</td>
@@ -365,9 +367,12 @@ export default function CapacityReport() {
             ))}
           </div>
         </div>
-        <p className="text-xs text-gray-400 ml-auto">
-          Click any <span className="font-semibold text-blue-600">Available Capacity</span> cell to set hours for that person/week.
-        </p>
+        <div className="ml-auto flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          <span className="text-slate-500 text-xs">⏱</span>
+          <span className="text-xs text-slate-600">
+            Capacity = <strong>Mon – Fri working days × 9 hrs</strong>. Click any capacity cell to override per person.
+          </span>
+        </div>
       </div>
 
       {/* Report */}
