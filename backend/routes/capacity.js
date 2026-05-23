@@ -4,16 +4,15 @@ const { authenticate, requireManager } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Return the Monday-based weeks that overlap with a given month
+// Return Sunday–Saturday weeks that overlap with a given month
 function getWeeksForMonth(year, month) {
   const firstDay = new Date(year, month - 1, 1);
   const lastDay  = new Date(year, month, 0);
 
-  const getMonday = (date) => {
+  // Find the Sunday on or before firstDay
+  const getSunday = (date) => {
     const d = new Date(date);
-    const day = d.getDay(); // 0=Sun
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
+    d.setDate(d.getDate() - d.getDay()); // getDay() 0=Sun, so Sun→0, Mon→-1, ...
     return d;
   };
 
@@ -23,15 +22,16 @@ function getWeeksForMonth(year, month) {
   const fmt    = (d) => `${pad(d.getDate())} ${MONTHS[d.getMonth()]}`;
 
   const weeks = [];
-  let monday  = getMonday(firstDay);
+  let sunday  = getSunday(firstDay);
   let weekNum = 1;
 
-  while (monday <= lastDay) {
-    const sunday     = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
+  while (sunday <= lastDay) {
+    // Saturday = Sunday + 6
+    const saturday   = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
 
-    const dispStart  = monday < firstDay ? new Date(firstDay) : new Date(monday);
-    const dispEnd    = sunday > lastDay  ? new Date(lastDay)  : new Date(sunday);
+    const dispStart  = sunday < firstDay ? new Date(firstDay) : new Date(sunday);
+    const dispEnd    = saturday > lastDay ? new Date(lastDay)  : new Date(saturday);
 
     // Working days (Mon–Fri) within the display range
     let workingDays = 0;
@@ -43,18 +43,18 @@ function getWeeksForMonth(year, month) {
     }
 
     weeks.push({
-      label:       `Week-${pad(weekNum)}`,
-      weekStart:   toStr(monday),         // Monday — used to match task week_start_date
-      weekEnd:     toStr(sunday),
-      dispStart:   toStr(dispStart),
-      dispEnd:     toStr(dispEnd),
-      dateRange:   `${fmt(dispStart)} - ${fmt(dispEnd)}`,
+      label:     `Week-${pad(weekNum)}`,
+      weekStart: toStr(sunday),     // Sunday — matches task week_start_date (also Sunday-based now)
+      weekEnd:   toStr(saturday),
+      dispStart: toStr(dispStart),
+      dispEnd:   toStr(dispEnd),
+      dateRange: `${fmt(dispStart)} - ${fmt(dispEnd)}`,
       workingDays,
     });
 
     weekNum++;
-    monday = new Date(monday);
-    monday.setDate(monday.getDate() + 7);
+    sunday = new Date(sunday);
+    sunday.setDate(sunday.getDate() + 7);
   }
 
   return weeks;

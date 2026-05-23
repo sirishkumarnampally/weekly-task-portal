@@ -41,41 +41,41 @@ function WeekBlock({ week, onEditCapacity }) {
         {/* ── Row 1: Week label + section headers ── */}
         <thead>
           <tr>
-            <td className="bg-blue-700 text-yellow-300 font-extrabold px-2 py-1.5 text-xs border border-blue-900">
+            <td className="bg-slate-800 text-white font-extrabold px-2 py-1.5 text-xs border border-slate-900">
               {week.label}
             </td>
-            <td className="bg-blue-900 text-white px-2 py-1.5 border border-blue-900 text-[10px]" colSpan={1}>
+            <td className="bg-slate-700 text-slate-200 px-2 py-1.5 border border-slate-800 text-[10px]" colSpan={1}>
               {week.dateRange}
             </td>
-            <td className="bg-yellow-400 text-gray-900 font-bold text-center border border-yellow-600 text-[10px]" colSpan={3}>
+            <td className="bg-blue-700 text-white font-bold text-center border border-blue-800 text-[10px]" colSpan={3}>
               Tasks
             </td>
-            <td className="bg-yellow-500 text-gray-900 font-bold text-center border border-yellow-700 text-[10px]" colSpan={2}>
+            <td className="bg-indigo-700 text-white font-bold text-center border border-indigo-800 text-[10px]" colSpan={2}>
               Total
             </td>
-            <td className="bg-blue-200 text-blue-900 font-bold text-center border border-blue-400 text-[10px]">
+            <td className="bg-teal-700 text-white font-bold text-center border border-teal-800 text-[10px]">
               Leave
             </td>
-            <td className="bg-yellow-300 text-gray-800 font-bold text-center border border-yellow-500 text-[10px]">
+            <td className="bg-emerald-700 text-white font-bold text-center border border-emerald-800 text-[10px]">
               Actual Utilization
             </td>
           </tr>
           <tr>
-            <td className="bg-blue-900 text-white px-2 py-1 border border-blue-800 text-[10px]">Name</td>
-            <td className="bg-blue-800 text-white text-center px-1 py-1 border border-blue-700 text-[10px]">
+            <td className="bg-slate-700 text-white px-2 py-1 border border-slate-600 text-[10px]">Name</td>
+            <td className="bg-slate-600 text-slate-100 text-center px-1 py-1 border border-slate-500 text-[10px]">
               Avail. Cap.
             </td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px]">Tasks</td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px]">Hours</td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px] leading-tight">
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px]">Tasks</td>
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px]">Hours</td>
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px] leading-tight">
               Monitoring,<br />Support
             </td>
-            <td className="bg-yellow-400 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-600 text-[10px]">Enh.</td>
-            <td className="bg-yellow-400 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-600 text-[10px]">Hours</td>
-            <td className="bg-blue-100 text-blue-900 text-center font-semibold px-1 py-1 border border-blue-300 text-[10px]">
+            <td className="bg-indigo-600 text-white text-center font-semibold px-1 py-1 border border-indigo-700 text-[10px]">Enh.</td>
+            <td className="bg-indigo-600 text-white text-center font-semibold px-1 py-1 border border-indigo-700 text-[10px]">Hours</td>
+            <td className="bg-teal-600 text-white text-center font-semibold px-1 py-1 border border-teal-700 text-[10px]">
               Holidays
             </td>
-            <td className="bg-yellow-200 text-gray-600 text-center px-1 py-1 border border-yellow-400 text-[10px]"></td>
+            <td className="bg-emerald-600 text-white text-center px-1 py-1 border border-emerald-700 text-[10px]"></td>
           </tr>
         </thead>
 
@@ -87,7 +87,7 @@ function WeekBlock({ week, onEditCapacity }) {
                 {m.name}{m.dept ? `(${m.dept})` : ''}
               </td>
               <td
-                className="text-center px-1 py-1 border border-gray-200 text-gray-700 font-semibold cursor-pointer hover:bg-blue-50 hover:text-blue-700"
+                className="text-center px-1 py-1 border border-gray-200 text-slate-700 font-semibold cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
                 title="Click to set capacity"
                 onClick={() => onEditCapacity(m, week.weekStart)}
               >
@@ -118,21 +118,21 @@ function WeekBlock({ week, onEditCapacity }) {
 
         {/* ── Totals row ── */}
         <tfoot>
-          <tr className="bg-blue-100 font-bold">
-            <td className="px-2 py-1.5 border border-blue-200 text-blue-900 text-right text-[10px]" colSpan={6}>
+          <tr className="bg-slate-100 font-bold">
+            <td className="px-2 py-1.5 border border-slate-300 text-slate-700 text-right text-[10px]" colSpan={6}>
               {totalHours}
             </td>
-            <td className="text-center px-1 py-1.5 border border-blue-200 text-blue-900">
+            <td className="text-center px-1 py-1.5 border border-slate-300 text-slate-800 font-extrabold">
               {totalHours}
             </td>
-            <td className="border border-blue-200" />
-            <td className="bg-yellow-300 text-gray-900 font-bold px-2 py-1.5 border border-yellow-500 text-[10px]">
+            <td className="border border-slate-200" />
+            <td className="bg-emerald-600 text-white font-bold px-3 py-1.5 border border-emerald-700 text-[10px] rounded-sm">
               Actual Man Weeks &nbsp;
               <span className="font-extrabold">{week.actualManWeeks.toFixed(13)}</span>
             </td>
           </tr>
           {/* spacer */}
-          <tr><td colSpan={9} className="py-0.5 bg-gray-100" /></tr>
+          <tr><td colSpan={9} className="py-1 bg-gray-100" /></tr>
         </tfoot>
       </table>
     </div>
@@ -157,27 +157,27 @@ function MonthlyBlock({ monthly, monthDateRange, onEditCapacity }) {
         </colgroup>
         <thead>
           <tr>
-            <td className="bg-blue-700 text-yellow-300 font-extrabold px-2 py-1.5 border border-blue-900">
+            <td className="bg-slate-800 text-white font-extrabold px-2 py-1.5 border border-slate-900 text-xs">
               {monthly.label}
             </td>
-            <td className="bg-blue-900 text-white px-2 py-1.5 border border-blue-900 text-[10px]">
+            <td className="bg-slate-700 text-slate-200 px-2 py-1.5 border border-slate-800 text-[10px]">
               {monthDateRange}
             </td>
-            <td className="bg-yellow-400 text-gray-900 font-bold text-center border border-yellow-600 text-[10px]" colSpan={3}>Tasks</td>
-            <td className="bg-yellow-500 text-gray-900 font-bold text-center border border-yellow-700 text-[10px]" colSpan={2}>Total</td>
-            <td className="bg-blue-200 text-blue-900 font-bold text-center border border-blue-400 text-[10px]">Leave</td>
-            <td className="bg-yellow-300 font-bold text-center border border-yellow-500 text-[10px]">Actual Utilization</td>
+            <td className="bg-blue-700 text-white font-bold text-center border border-blue-800 text-[10px]" colSpan={3}>Tasks</td>
+            <td className="bg-indigo-700 text-white font-bold text-center border border-indigo-800 text-[10px]" colSpan={2}>Total</td>
+            <td className="bg-teal-700 text-white font-bold text-center border border-teal-800 text-[10px]">Leave</td>
+            <td className="bg-emerald-700 text-white font-bold text-center border border-emerald-800 text-[10px]">Actual Utilization</td>
           </tr>
           <tr>
-            <td className="bg-blue-900 text-white px-2 py-1 border border-blue-800 text-[10px]">Name</td>
-            <td className="bg-blue-800 text-white text-center px-1 py-1 border border-blue-700 text-[10px]">Avail. Cap.</td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px]">Tasks</td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px]">Hours</td>
-            <td className="bg-yellow-300 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-500 text-[10px] leading-tight">Monitoring,<br />Support</td>
-            <td className="bg-yellow-400 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-600 text-[10px]">Enh.</td>
-            <td className="bg-yellow-400 text-gray-800 text-center font-semibold px-1 py-1 border border-yellow-600 text-[10px]">Hours</td>
-            <td className="bg-blue-100 text-blue-900 text-center font-semibold px-1 py-1 border border-blue-300 text-[10px]">Holidays</td>
-            <td className="bg-yellow-200 text-gray-600 text-center px-1 py-1 border border-yellow-400 text-[10px]"></td>
+            <td className="bg-slate-700 text-white px-2 py-1 border border-slate-600 text-[10px]">Name</td>
+            <td className="bg-slate-600 text-slate-100 text-center px-1 py-1 border border-slate-500 text-[10px]">Avail. Cap.</td>
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px]">Tasks</td>
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px]">Hours</td>
+            <td className="bg-blue-600 text-white text-center font-semibold px-1 py-1 border border-blue-700 text-[10px] leading-tight">Monitoring,<br />Support</td>
+            <td className="bg-indigo-600 text-white text-center font-semibold px-1 py-1 border border-indigo-700 text-[10px]">Enh.</td>
+            <td className="bg-indigo-600 text-white text-center font-semibold px-1 py-1 border border-indigo-700 text-[10px]">Hours</td>
+            <td className="bg-teal-600 text-white text-center font-semibold px-1 py-1 border border-teal-700 text-[10px]">Holidays</td>
+            <td className="bg-emerald-600 text-white text-center px-1 py-1 border border-emerald-700 text-[10px]"></td>
           </tr>
         </thead>
         <tbody>
@@ -200,11 +200,11 @@ function MonthlyBlock({ monthly, monthDateRange, onEditCapacity }) {
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-blue-100 font-bold">
-            <td className="px-2 py-1.5 border border-blue-200 text-blue-900 text-right text-[10px]" colSpan={6}>{monthly.totalHours}</td>
-            <td className="text-center px-1 py-1.5 border border-blue-200 text-blue-900">{monthly.totalHours}</td>
-            <td className="border border-blue-200" />
-            <td className="bg-yellow-300 text-gray-900 font-bold px-2 py-1.5 border border-yellow-500 text-[10px]">
+          <tr className="bg-slate-100 font-bold">
+            <td className="px-2 py-1.5 border border-slate-300 text-slate-700 text-right text-[10px]" colSpan={6}>{monthly.totalHours}</td>
+            <td className="text-center px-1 py-1.5 border border-slate-300 text-slate-800 font-extrabold">{monthly.totalHours}</td>
+            <td className="border border-slate-200" />
+            <td className="bg-emerald-600 text-white font-bold px-3 py-1.5 border border-emerald-700 text-[10px] rounded-sm">
               Actual Man Weeks &nbsp;
               <span className="font-extrabold">{monthly.actualManWeeks.toFixed(13)}</span>
             </td>

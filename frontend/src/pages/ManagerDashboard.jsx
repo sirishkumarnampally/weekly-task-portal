@@ -312,32 +312,32 @@ export default function ManagerDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-yellow-300">
+                <tr className="bg-slate-800">
                   {[
-                    ['title',           'TASK'],
-                    ['status',          'STATUS'],
-                    ['actual_hours',    'Hours'],
-                    ['task_type',       'Task Type'],
-                    ['requester',       'Requester'],
-                    ['week_no',         'WeekNO'],
-                    ['owner',           'Owner'],
-                    ['team_type',       'Team_type'],
+                    ['title',        'Task'],
+                    ['status',       'Status'],
+                    ['actual_hours', 'Hours'],
+                    ['task_type',    'Task Type'],
+                    ['requester',    'Requester'],
+                    ['week_no',      'Week No'],
+                    ['owner',        'Owner'],
+                    ['team_type',    'Team Type'],
                   ].map(([field, label]) => (
                     <th
                       key={field}
-                      className="px-3 py-2.5 text-center text-xs font-bold text-gray-900 uppercase tracking-wide border border-gray-400 cursor-pointer hover:bg-yellow-400 select-none whitespace-nowrap"
+                      className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-slate-700 select-none whitespace-nowrap border-r border-slate-600 last:border-0"
                       onClick={() => handleSort(field)}
                     >
                       {label}<SortIcon field={field} />
                     </th>
                   ))}
-                  <th className="px-3 py-2.5 text-center text-xs font-bold text-gray-900 uppercase tracking-wide border border-gray-400 whitespace-nowrap">Member</th>
-                  <th className="px-3 py-2.5 border border-gray-400 w-16" />
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider border-r border-slate-600 whitespace-nowrap">Member</th>
+                  <th className="px-3 py-3 w-16 border-0" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sorted.map((task, idx) => (
-                  <tr key={task.id} className={`hover:bg-yellow-50 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                  <tr key={task.id} className={`hover:bg-blue-50 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                     <td className="px-3 py-2.5 border-x border-gray-100 max-w-[200px]">
                       <p className="font-medium text-gray-900 truncate text-xs">{task.title}</p>
                       {task.description && <p className="text-gray-400 text-[10px] truncate">{task.description}</p>}
