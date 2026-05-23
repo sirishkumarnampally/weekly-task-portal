@@ -222,6 +222,30 @@ router.post('/bulk', authenticate, requireManager, (req, res) => {
   res.json({ ok: true, count: entries.length });
 });
 
+// GET /api/capacity/leave-summary?week=YYYY-MM-DD&team=  — all members with leave for a week (manager view)
+router.get('/leave-summary', authenticate, requireManager, (req, res) => {
+  const { week, team } = req.query;
+  if (!week) return res.status(400).json({ error: 'week required' });
+
+  let q = `
+    SELECT u.id, u.name, u.team,
+           COALESCE(c.leave_hours, 0) AS leave_hours
+    FROM users u
+    LEFT JOIN capacity c ON c.user_id = u.id AND c.week_start_date = ?
+    WHERE u.role = 'member'
+  `;
+  const p = [week];
+  if (team) { q += ' AND u.team = ?'; p.push(team); }
+  q += ' ORDER BY u.team, u.name';
+
+  const members = db.prepare(q).all(...p);
+  res.json(members.map(m => ({
+    ...m,
+    leave_days: m.leave_hours / 9,
+    on_leave:   m.leave_hours > 0,
+  })));
+});
+
 // GET /api/capacity/my-leave?week=YYYY-MM-DD  — member's own leave for a week
 router.get('/my-leave', authenticate, (req, res) => {
   const { week } = req.query;

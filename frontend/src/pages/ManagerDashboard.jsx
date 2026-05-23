@@ -1,41 +1,59 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import TaskFormModal from '../components/TaskFormModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PriorityBadge from '../components/PriorityBadge';
 import StatusBadge from '../components/StatusBadge';
-import { weekOptions } from '../utils/weekUtils';
+import {
+  weekOptions,
+  weekOptionsForYear,
+  monthOptionsForYear,
+  currentWeekStart,
+  formatWeekLabel,
+} from '../utils/weekUtils';
 
-const STATUSES = ['', 'Not Started', 'In Progress', 'Completed', 'Blocked'];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS  = Array.from({ length: 2030 - 2024 + 1 }, (_, i) => 2024 + i);
+const STATUSES   = ['', 'Not Started', 'In Progress', 'Completed', 'Blocked'];
 const PRIORITIES = ['', 'High', 'Medium', 'Low'];
 
 export default function ManagerDashboard() {
-  const [tasks, setTasks] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ week: '', user_id: '', status: '', priority: '', team: '' });
-  const [sortField, setSortField] = useState('week_start_date');
-  const [sortDir, setSortDir] = useState('desc');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [tasks,       setTasks]       = useState([]);
+  const [users,       setUsers]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filters,     setFilters]     = useState({ week: '', user_id: '', status: '', priority: '', team: '' });
+  const [sortField,   setSortField]   = useState('week_start_date');
+  const [sortDir,     setSortDir]     = useState('desc');
+  const [modalOpen,   setModalOpen]   = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [exportFormat, setExportFormat] = useState('xlsx');
+  const [deleteTarget,setDeleteTarget]= useState(null);
+
+  // Export state
+  const [exportFormat,   setExportFormat]   = useState('xlsx');
+  const [exportYear,     setExportYear]     = useState(CURRENT_YEAR);
+  const [exportMonth,    setExportMonth]    = useState('');
   const [exportWeekFrom, setExportWeekFrom] = useState('');
-  const [exportWeekTo, setExportWeekTo] = useState('');
-  const [exportMonth, setExportMonth] = useState('');
-  const weeks = weekOptions(16);
+  const [exportWeekTo,   setExportWeekTo]   = useState('');
 
-  // Generate last 12 months as YYYY-MM options
-  const monthOptions = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - i);
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    return { value, label };
-  });
+  // Leave state
+  const [leaveData, setLeaveData] = useState([]);
 
+  // Rolling week list for the task-filter dropdown (last 16 weeks)
+  const filterWeeks = weekOptions(16);
+
+  // Year-scoped week/month options for export
+  const exportWeeks  = useMemo(() => weekOptionsForYear(exportYear),  [exportYear]);
+  const exportMonths = useMemo(() => monthOptionsForYear(exportYear), [exportYear]);
+
+  // Reset export selectors when year changes
+  useEffect(() => {
+    setExportWeekFrom('');
+    setExportWeekTo('');
+    setExportMonth('');
+  }, [exportYear]);
+
+  // ── Fetch tasks + users ───────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -55,6 +73,22 @@ export default function ManagerDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // ── Fetch leave summary for the active week filter ────────────────────────
+  const fetchLeave = useCallback(async () => {
+    const week = filters.week || currentWeekStart();
+    try {
+      const params = { week };
+      if (filters.team) params.team = filters.team;
+      const { data } = await axios.get('/api/capacity/leave-summary', { params });
+      setLeaveData(data);
+    } catch {
+      // silently ignore — leave section is supplementary
+    }
+  }, [filters.week, filters.team]);
+
+  useEffect(() => { fetchLeave(); }, [fetchLeave]);
+
+  // ── Task CRUD ─────────────────────────────────────────────────────────────
   const handleSave = async (formData) => {
     try {
       if (editingTask) {
@@ -87,19 +121,9 @@ export default function ManagerDashboard() {
   };
 
   const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
-  const clearFilters = () => setFilters({ week: '', user_id: '', status: '', priority: '' });
+  const clearFilters = () => setFilters({ week: '', user_id: '', status: '', priority: '', team: '' });
 
-  const sorted = [...tasks].sort((a, b) => {
-    const va = a[sortField] ?? '';
-    const vb = b[sortField] ?? '';
-    return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
-  });
-
-  const SortIcon = ({ field }) => {
-    if (sortField !== field) return <span className="text-gray-300 ml-1">↕</span>;
-    return <span className="text-blue-600 ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
-  };
-
+  // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       const params = new URLSearchParams({ format: exportFormat });
@@ -113,14 +137,14 @@ export default function ManagerDashboard() {
 
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/export?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tasks_export.${exportFormat}`;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `tasks_export_${exportYear}.${exportFormat}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Exported as ${exportFormat.toUpperCase()}`);
@@ -129,27 +153,37 @@ export default function ManagerDashboard() {
     }
   };
 
-  // Stats
-  const total = tasks.length;
-  const completed = tasks.filter(t => t.status === 'Completed').length;
-  const blocked = tasks.filter(t => t.status === 'Blocked').length;
-  const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-  const completedPct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const totalEst = tasks.reduce((s, t) => s + (t.estimated_hours || 0), 0);
-  const totalActual = tasks.reduce((s, t) => s + (t.actual_hours || 0), 0);
+  // ── Derived stats ─────────────────────────────────────────────────────────
+  const total       = tasks.length;
+  const completed   = tasks.filter(t => t.status === 'Completed').length;
+  const blocked     = tasks.filter(t => t.status === 'Blocked').length;
+  const inProgress  = tasks.filter(t => t.status === 'In Progress').length;
+  const completedPct= total > 0 ? Math.round((completed / total) * 100) : 0;
+  const totalEst    = tasks.reduce((s, t) => s + (t.estimated_hours || 0), 0);
+  const totalActual = tasks.reduce((s, t) => s + (t.actual_hours    || 0), 0);
+  const onLeaveCount= leaveData.filter(m => m.on_leave).length;
+  const totalLeaveDays = leaveData.reduce((s, m) => s + m.leave_days, 0);
 
-  // Group by member
-  const byMember = sorted.reduce((acc, t) => {
-    const key = t.member_name || 'Unknown';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(t);
-    return acc;
-  }, {});
+  const sorted = [...tasks].sort((a, b) => {
+    const va = a[sortField] ?? '';
+    const vb = b[sortField] ?? '';
+    return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
 
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1">↕</span>;
+    return <span className="text-blue-600 ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  // Week label for the leave section header
+  const leaveWeek = filters.week || currentWeekStart();
+  const leaveWeekLabel = formatWeekLabel(leaveWeek);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -159,14 +193,14 @@ export default function ManagerDashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
         {[
-          { label: 'Total Tasks', value: total, icon: '📋', color: 'text-gray-900' },
-          { label: 'Completed', value: `${completedPct}%`, icon: '✅', color: 'text-emerald-600' },
-          { label: 'In Progress', value: inProgress, icon: '🔄', color: 'text-blue-600' },
-          { label: 'Blocked', value: blocked, icon: '🚫', color: 'text-red-600' },
-          { label: 'Est. Hours', value: `${totalEst.toFixed(1)}h`, icon: '⏱', color: 'text-gray-900' },
-          { label: 'Actual Hours', value: `${totalActual.toFixed(1)}h`, icon: '⏱', color: 'text-gray-900' },
+          { label: 'Total Tasks',   value: total,                   icon: '📋', color: 'text-gray-900'    },
+          { label: 'Completed',     value: `${completedPct}%`,      icon: '✅', color: 'text-emerald-600' },
+          { label: 'In Progress',   value: inProgress,              icon: '🔄', color: 'text-blue-600'    },
+          { label: 'Blocked',       value: blocked,                 icon: '🚫', color: 'text-red-600'     },
+          { label: 'Est. Hours',    value: `${totalEst.toFixed(1)}h`,    icon: '⏱', color: 'text-gray-900' },
+          { label: 'Actual Hours',  value: `${totalActual.toFixed(1)}h`, icon: '⏱', color: 'text-gray-900' },
         ].map(s => (
           <div key={s.label} className="card p-4">
             <div className="flex items-center gap-1.5 mb-1">
@@ -176,6 +210,60 @@ export default function ManagerDashboard() {
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Leave / Holiday section */}
+      <div className="card mb-4 overflow-hidden border-l-4 border-amber-400">
+        <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-amber-800">🏖 Holiday / Leave</span>
+            <span className="text-xs text-amber-600">— {leaveWeekLabel}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            {onLeaveCount > 0 ? (
+              <>
+                <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-semibold">
+                  {onLeaveCount} on leave
+                </span>
+                <span className="text-amber-700 font-medium">
+                  {totalLeaveDays % 1 === 0 ? totalLeaveDays : totalLeaveDays.toFixed(1)} days total
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-400 italic">No leave logged this week</span>
+            )}
+          </div>
+        </div>
+
+        <div className="px-4 py-3 flex flex-wrap gap-2">
+          {leaveData.length === 0 ? (
+            <span className="text-xs text-gray-400">Loading leave data…</span>
+          ) : (
+            leaveData.map(m => (
+              <div
+                key={m.id}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                  m.on_leave
+                    ? 'bg-amber-100 border-amber-300 text-amber-800'
+                    : 'bg-gray-50 border-gray-200 text-gray-400'
+                }`}
+              >
+                {/* Avatar */}
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 ${
+                  m.team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'
+                }`}>
+                  {m.name.charAt(0)}
+                </div>
+                <span>{m.name}</span>
+                {m.on_leave && (
+                  <span className="ml-1 bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                    {m.leave_days % 1 === 0 ? m.leave_days : m.leave_days.toFixed(1)}d
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -216,7 +304,7 @@ export default function ManagerDashboard() {
             <label className="label text-xs">Week</label>
             <select className="input text-sm" value={filters.week} onChange={e => setFilter('week', e.target.value)}>
               <option value="">All weeks</option>
-              {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+              {filterWeeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
             </select>
           </div>
           <div>
@@ -245,49 +333,81 @@ export default function ManagerDashboard() {
 
       {/* Export panel */}
       <div className="card p-4 mb-6 border-dashed border-2 border-gray-200">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-3">
           <span className="text-sm font-semibold text-gray-700">📤 Export Data</span>
-          <span className="text-xs text-gray-400">(Excel includes a Monthly Dashboard as the first sheet)</span>
-        </div>
-
-        {/* Month quick-filter */}
-        <div className="flex items-center gap-2 mb-3 mt-2">
-          <span className="text-xs font-medium text-gray-600 shrink-0">Filter by Month:</span>
-          <select
-            className="input text-sm max-w-[220px]"
-            value={exportMonth}
-            onChange={e => { setExportMonth(e.target.value); if (e.target.value) { setExportWeekFrom(''); setExportWeekTo(''); } }}
-          >
-            <option value="">All months (or use week range below)</option>
-            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-          {exportMonth && (
-            <button onClick={() => setExportMonth('')} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
-          )}
+          <span className="text-xs text-gray-400">
+            (Excel: Monthly Dashboard · Task Detail · Leave Summary)
+          </span>
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
+          {/* Year */}
+          <div>
+            <label className="label text-xs">Year</label>
+            <select
+              className="input text-sm w-24"
+              value={exportYear}
+              onChange={e => setExportYear(Number(e.target.value))}
+            >
+              {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          {/* Month */}
+          <div>
+            <label className="label text-xs">Month</label>
+            <select
+              className="input text-sm w-44"
+              value={exportMonth}
+              onChange={e => {
+                setExportMonth(e.target.value);
+                if (e.target.value) { setExportWeekFrom(''); setExportWeekTo(''); }
+              }}
+            >
+              <option value="">All months (or use weeks)</option>
+              {exportMonths.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+
+          {/* From Week */}
           <div className={exportMonth ? 'opacity-40 pointer-events-none' : ''}>
             <label className="label text-xs">From Week</label>
-            <select className="input text-sm w-44" value={exportWeekFrom} onChange={e => setExportWeekFrom(e.target.value)}>
+            <select
+              className="input text-sm w-44"
+              value={exportWeekFrom}
+              onChange={e => setExportWeekFrom(e.target.value)}
+            >
               <option value="">Earliest</option>
-              {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+              {exportWeeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
             </select>
           </div>
+
+          {/* To Week */}
           <div className={exportMonth ? 'opacity-40 pointer-events-none' : ''}>
             <label className="label text-xs">To Week</label>
-            <select className="input text-sm w-44" value={exportWeekTo} onChange={e => setExportWeekTo(e.target.value)}>
+            <select
+              className="input text-sm w-44"
+              value={exportWeekTo}
+              onChange={e => setExportWeekTo(e.target.value)}
+            >
               <option value="">Latest</option>
-              {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+              {exportWeeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
             </select>
           </div>
+
+          {/* Format */}
           <div>
             <label className="label text-xs">Format</label>
-            <select className="input text-sm w-28" value={exportFormat} onChange={e => setExportFormat(e.target.value)}>
+            <select
+              className="input text-sm w-28"
+              value={exportFormat}
+              onChange={e => setExportFormat(e.target.value)}
+            >
               <option value="xlsx">Excel (.xlsx)</option>
               <option value="csv">CSV (.csv)</option>
             </select>
           </div>
+
           <button onClick={handleExport} className="btn-primary flex items-center gap-2">
             <span>⬇️</span> Export {exportFormat.toUpperCase()}
           </button>
@@ -312,29 +432,29 @@ export default function ManagerDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '32%' }} />  {/* TASK */}
-                <col style={{ width: '8%' }} />   {/* STATUS */}
-                <col style={{ width: '5%' }} />   {/* Hours */}
-                <col style={{ width: '8%' }} />   {/* Task Type */}
-                <col style={{ width: '9%' }} />   {/* Requester */}
-                <col style={{ width: '7%' }} />   {/* WeekNO */}
-                <col style={{ width: '8%' }} />   {/* Owner */}
-                <col style={{ width: '9%' }} />   {/* Team_type */}
-                <col style={{ width: '10%' }} />  {/* Member */}
-                <col style={{ width: '4%' }} />   {/* Actions */}
+                <col style={{ width: '32%' }} />
+                <col style={{ width: '8%'  }} />
+                <col style={{ width: '5%'  }} />
+                <col style={{ width: '8%'  }} />
+                <col style={{ width: '9%'  }} />
+                <col style={{ width: '7%'  }} />
+                <col style={{ width: '8%'  }} />
+                <col style={{ width: '9%'  }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '4%'  }} />
               </colgroup>
               <thead>
                 <tr className="bg-slate-800">
                   {[
-                    ['title',        'TASK'],
-                    ['status',       'STATUS'],
-                    ['actual_hours', 'Hours'],
-                    ['task_type',    'Task Type'],
-                    ['requester',    'Requester'],
+                    ['title',           'TASK'],
+                    ['status',          'STATUS'],
+                    ['actual_hours',    'Hours'],
+                    ['task_type',       'Task Type'],
+                    ['requester',       'Requester'],
                     ['week_start_date', 'WeekNO'],
-                    ['owner',        'Owner'],
-                    ['team_type',    'Team_type'],
-                    ['member_name',  'Member'],
+                    ['owner',           'Owner'],
+                    ['team_type',       'Team_type'],
+                    ['member_name',     'Member'],
                   ].map(([field, label]) => (
                     <th
                       key={field}
@@ -349,60 +469,45 @@ export default function ManagerDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sorted.map((task, idx) => (
-                  <tr key={task.id} className={`hover:bg-blue-50 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-
-                    {/* TASK — wide, left-aligned */}
+                  <tr
+                    key={task.id}
+                    className={`hover:bg-blue-50 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                  >
                     <td className="px-3 py-2.5 border-r border-gray-100">
                       <p className="font-semibold text-gray-900 truncate">{task.title}</p>
                     </td>
-
-                    {/* STATUS */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center">
                       <StatusBadge status={task.status} />
                     </td>
-
-                    {/* Hours */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center font-semibold text-gray-700">
                       {task.actual_hours > 0 ? `${task.actual_hours}h` : <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* Task Type */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center">
                       {task.task_type
                         ? <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">{task.task_type}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* Requester */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center text-gray-600 truncate">
                       {task.requester || <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* WeekNO — show formatted week date */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center">
                       {task.week_start_date
                         ? <span className="font-medium text-gray-700 whitespace-nowrap">{task.week_start_date.slice(5).replace('-', '/')}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* Owner */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center text-gray-600 truncate">
                       {task.owner || <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* Team_type */}
                     <td className="px-2 py-2.5 border-r border-gray-100 text-center">
                       {(task.team_type || task.member_team)
                         ? <span className={`font-bold px-2 py-0.5 rounded-full text-white text-[10px] ${
-                            task.team_type === 'AMO'   ? 'bg-blue-600' :
+                            task.team_type === 'AMO'   ? 'bg-blue-600'   :
                             task.team_type === 'PJ'    ? 'bg-indigo-600' :
-                            task.team_type === 'Infra' ? 'bg-teal-600' :
-                            task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'
+                            task.team_type === 'Infra' ? 'bg-teal-600'   :
+                            task.member_team === 'VPM' ? 'bg-blue-600'   : 'bg-violet-600'
                           }`}>{task.team_type || task.member_team}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-
-                    {/* Member */}
                     <td className="px-2 py-2.5 border-r border-gray-100">
                       <div className="flex items-center gap-1.5">
                         <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 ${task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'}`}>
@@ -411,14 +516,18 @@ export default function ManagerDashboard() {
                         <span className="text-gray-700 font-medium truncate">{task.member_name}</span>
                       </div>
                     </td>
-
-                    {/* Actions */}
                     <td className="px-2 py-2.5">
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingTask(task); setModalOpen(true); }}
-                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors text-xs" title="Edit">✏️</button>
-                        <button onClick={() => setDeleteTarget(task)}
-                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors text-xs" title="Delete">🗑️</button>
+                        <button
+                          onClick={() => { setEditingTask(task); setModalOpen(true); }}
+                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors text-xs"
+                          title="Edit"
+                        >✏️</button>
+                        <button
+                          onClick={() => setDeleteTarget(task)}
+                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors text-xs"
+                          title="Delete"
+                        >🗑️</button>
                       </div>
                     </td>
                   </tr>
