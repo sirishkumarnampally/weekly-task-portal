@@ -69,17 +69,25 @@ router.get('/:id', authenticate, (req, res) => {
 
 // Create task — always owned by the requesting user
 router.post('/', authenticate, (req, res) => {
-  const { week_start_date, title, description, priority, status, estimated_hours, actual_hours, notes } = req.body;
+  const { week_start_date, title, description, priority, status, estimated_hours, actual_hours, notes,
+          task_type, requester, week_no, owner, team_type } = req.body;
   if (!title || !week_start_date)
     return res.status(400).json({ error: 'title and week_start_date are required' });
 
+  // team_type: manager can set explicitly, member defaults to their team
+  const resolvedTeamType = req.user.role === 'manager'
+    ? (team_type || '')
+    : (req.user.team || '');
+
   const result = db.prepare(`
-    INSERT INTO tasks (user_id, week_start_date, title, description, priority, status, estimated_hours, actual_hours, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (user_id, week_start_date, title, description, priority, status,
+                       estimated_hours, actual_hours, notes, task_type, requester, week_no, owner, team_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     req.user.id, week_start_date, title,
     description || '', priority || 'Medium', status || 'Not Started',
-    estimated_hours || 0, actual_hours || 0, notes || ''
+    estimated_hours || 0, actual_hours || 0, notes || '',
+    task_type || '', requester || '', week_no || 0, owner || '', resolvedTeamType
   );
 
   res.status(201).json(db.prepare('SELECT * FROM tasks WHERE id = ?').get(result.lastInsertRowid));
@@ -92,23 +100,31 @@ router.put('/:id', authenticate, (req, res) => {
   if (req.user.role !== 'manager' && task.user_id !== req.user.id)
     return res.status(403).json({ error: 'You can only edit your own tasks' });
 
-  const { title, description, priority, status, estimated_hours, actual_hours, notes, week_start_date } = req.body;
+  const { title, description, priority, status, estimated_hours, actual_hours, notes, week_start_date,
+          task_type, requester, week_no, owner, team_type } = req.body;
 
   db.prepare(`
     UPDATE tasks SET
       title = ?, description = ?, priority = ?, status = ?,
       estimated_hours = ?, actual_hours = ?, notes = ?,
-      week_start_date = ?, updated_at = datetime('now')
+      week_start_date = ?, task_type = ?, requester = ?,
+      week_no = ?, owner = ?, team_type = ?,
+      updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    title          ?? task.title,
-    description    ?? task.description,
-    priority       ?? task.priority,
-    status         ?? task.status,
+    title           ?? task.title,
+    description     ?? task.description,
+    priority        ?? task.priority,
+    status          ?? task.status,
     estimated_hours ?? task.estimated_hours,
-    actual_hours   ?? task.actual_hours,
-    notes          ?? task.notes,
+    actual_hours    ?? task.actual_hours,
+    notes           ?? task.notes,
     week_start_date ?? task.week_start_date,
+    task_type       ?? task.task_type,
+    requester       ?? task.requester,
+    week_no         ?? task.week_no,
+    owner           ?? task.owner,
+    team_type       ?? task.team_type,
     req.params.id
   );
 

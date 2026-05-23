@@ -39,10 +39,13 @@ db.exec(`
   );
 `);
 
-// Migrate: add team column to existing DBs that predate this field
-try {
-  db.exec(`ALTER TABLE users ADD COLUMN team TEXT NOT NULL DEFAULT ''`);
-} catch { /* column already exists — safe to ignore */ }
+// Migrations — safe to run on existing DBs
+try { db.exec(`ALTER TABLE users ADD COLUMN team TEXT NOT NULL DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE tasks ADD COLUMN task_type TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE tasks ADD COLUMN requester TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE tasks ADD COLUMN week_no INTEGER DEFAULT 0`); } catch {}
+try { db.exec(`ALTER TABLE tasks ADD COLUMN owner TEXT DEFAULT ''`); } catch {}
+try { db.exec(`ALTER TABLE tasks ADD COLUMN team_type TEXT DEFAULT ''`); } catch {}
 
 // Seed demo users if table is empty
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();

@@ -235,6 +235,8 @@ export default function MemberDashboard() {
         onSave={handleSave}
         initialData={editingTask}
         memberName={user?.name}
+        isManager={false}
+        userTeam={user?.team}
       />
 
       <ConfirmDialog
