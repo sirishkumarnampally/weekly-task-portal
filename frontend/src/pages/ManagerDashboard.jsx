@@ -47,6 +47,7 @@ export default function ManagerDashboard() {
   const [leavePeriod,  setLeavePeriod]  = useState('month');   // 'month' | 'week'
   const [leaveMonth,   setLeaveMonth]   = useState(CURRENT_MONTH);
   const [leaveWeekSel, setLeaveWeekSel] = useState('');
+  const [leaveTeam,    setLeaveTeam]    = useState('');
 
   // ── Derived option lists ─────────────────────────────────────────────────
   const filterWeeks  = weekOptions(16);
@@ -91,11 +92,12 @@ export default function ManagerDashboard() {
       if (!leaveWeekSel) return;
       params.week = leaveWeekSel;
     }
+    if (leaveTeam) params.team = leaveTeam;
     try {
       const { data } = await axios.get('/api/capacity/leave-summary', { params });
       setLeaveData(data);
     } catch { /* supplementary — ignore */ }
-  }, [leavePeriod, leaveMonth, leaveWeekSel]);
+  }, [leavePeriod, leaveMonth, leaveWeekSel, leaveTeam]);
 
   useEffect(() => { fetchLeave(); }, [fetchLeave]);
 
@@ -540,6 +542,23 @@ export default function ManagerDashboard() {
               {leaveWeekOpts.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
             </select>
           )}
+
+          {/* Team filter */}
+          <div className="flex rounded-lg border border-amber-300 overflow-hidden text-xs">
+            {[['', 'All'], ['VPM', 'VPM'], ['CWGW', 'CWGW']].map(([val, lbl]) => (
+              <button
+                key={val}
+                onClick={() => setLeaveTeam(val)}
+                className={`px-2.5 py-1 font-semibold transition-colors ${
+                  leaveTeam === val
+                    ? val === 'VPM'  ? 'bg-blue-600 text-white'
+                    : val === 'CWGW' ? 'bg-violet-600 text-white'
+                    : 'bg-amber-500 text-white'
+                    : 'bg-white text-amber-700 hover:bg-amber-50'
+                }`}
+              >{lbl}</button>
+            ))}
+          </div>
 
           {/* Summary pills */}
           <div className="ml-auto flex items-center gap-2 text-xs shrink-0">

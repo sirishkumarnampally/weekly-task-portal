@@ -111,16 +111,60 @@ function SubtypeCard({ st }) {
   );
 }
 
+// ─── Monthly task-count bar chart ────────────────────────────────────────────
+function MonthlyBarChart({ trend, teamKey, height = 110 }) {
+  // Aggregate weekly trend rows → monthly totals
+  const monthMap = {};
+  for (const r of (trend || [])) {
+    const ym = r.week_start_date.slice(0, 7);
+    monthMap[ym] = (monthMap[ym] || 0) + r.total;
+  }
+  const sorted = Object.entries(monthMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-8); // last 8 months
+
+  if (sorted.length === 0) {
+    return <p className="text-xs text-gray-400 text-center py-8">No monthly data</p>;
+  }
+
+  const max      = Math.max(...sorted.map(([, v]) => v), 1);
+  const barColor = teamKey === 'VPM' ? 'bg-blue-500' : 'bg-violet-500';
+  const txtColor = teamKey === 'VPM' ? 'text-blue-700' : 'text-violet-700';
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Monthly Task Count</p>
+      <div className="flex items-end gap-2" style={{ height }}>
+        {sorted.map(([ym, count]) => {
+          const [y, m] = ym.split('-');
+          const abbr   = new Date(+y, +m - 1, 1).toLocaleString('en-US', { month: 'short' });
+          const barH   = Math.round((count / max) * height);
+          return (
+            <div key={ym} className="flex-1 flex flex-col items-center gap-0.5 group">
+              <span className={`text-xs font-bold ${txtColor}`}>{count}</span>
+              <div className="w-full rounded-t-lg relative cursor-default" style={{ height: barH || 4 }}>
+                <div className={`w-full h-full rounded-t-lg ${barColor}`} />
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  {abbr} {y}: {count} tasks
+                </div>
+              </div>
+              <span className="text-[10px] text-gray-500 font-medium">{abbr}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Team section ─────────────────────────────────────────────────────────────
 function TeamSection({ teamKey, teamData }) {
   const meta     = TEAM_META[teamKey];
   const total    = teamData.total;
   const subtypes = teamData.subtypes;
 
-  const taskBars  = subtypes.map(s => ({ label: s.team_type, value: s.total }));
-  const hourBars  = subtypes.map(s => ({ label: s.team_type, value: Number(s.total_hours), unit: 'hours' }));
-  const maxTasks  = Math.max(...taskBars.map(b => b.value), 1);
-  const maxHours  = Math.max(...hourBars.map(b => b.value), 1);
+  const taskBars = subtypes.map(s => ({ label: s.team_type, value: s.total }));
+  const maxTasks = Math.max(...taskBars.map(b => b.value), 1);
 
   return (
     <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm mb-6">
@@ -159,10 +203,10 @@ function TeamSection({ teamKey, teamData }) {
         {/* Charts row */}
         <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100">
           <div className="bg-gray-50 rounded-xl p-4">
-            <BarChart bars={taskBars} maxValue={maxTasks} height={110} title="Task Count" />
+            <BarChart bars={taskBars} maxValue={maxTasks} height={110} title="Task Count by Sub-type" />
           </div>
           <div className="bg-gray-50 rounded-xl p-4">
-            <BarChart bars={hourBars} maxValue={maxHours} height={110} title="Hours Logged" />
+            <MonthlyBarChart trend={teamData.trend} teamKey={teamKey} height={110} />
           </div>
         </div>
 
