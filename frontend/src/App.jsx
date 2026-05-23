@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import MemberDashboard from './pages/MemberDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ManageUsers from './pages/ManageUsers';
@@ -26,6 +27,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/" element={<RootRedirect />} />
         <Route path="/dashboard" element={
           <PrivateRoute role="member">

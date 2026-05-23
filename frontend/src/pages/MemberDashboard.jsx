@@ -7,15 +7,23 @@ import TaskFormModal from '../components/TaskFormModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { weekOptions, currentWeekStart, formatWeekLabel } from '../utils/weekUtils';
 
+const TEAM_STYLE = {
+  VPM:  { bg: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-800',   border: 'border-blue-200', text: 'text-blue-700' },
+  CWGW: { bg: 'bg-violet-600', badge: 'bg-violet-100 text-violet-800', border: 'border-violet-200', text: 'text-violet-700' },
+};
+
 export default function MemberDashboard() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(currentWeekStart());
+  const [viewMode, setViewMode] = useState('team');   // 'team' | 'mine'
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const weeks = weekOptions(12);
+
+  const teamStyle = TEAM_STYLE[user?.team] || TEAM_STYLE.VPM;
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -33,14 +41,18 @@ export default function MemberDashboard() {
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
+  const displayedTasks = viewMode === 'mine'
+    ? tasks.filter(t => t.user_id === user?.id)
+    : tasks;
+
   const handleSave = async (formData) => {
     try {
       if (editingTask) {
         await axios.put(`/api/tasks/${editingTask.id}`, formData);
-        toast.success('Task updated successfully');
+        toast.success('Task updated');
       } else {
         await axios.post('/api/tasks', formData);
-        toast.success('Task added successfully');
+        toast.success('Task added');
       }
       setModalOpen(false);
       setEditingTask(null);
@@ -51,50 +63,62 @@ export default function MemberDashboard() {
     }
   };
 
-  const handleEdit = (task) => {
-    setEditingTask(task);
-    setModalOpen(true);
-  };
-
   const handleDelete = async () => {
     try {
       await axios.delete(`/api/tasks/${deleteTarget.id}`);
       toast.success('Task deleted');
       setDeleteTarget(null);
       fetchTasks();
-    } catch {
-      toast.error('Failed to delete task');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to delete task');
     }
   };
 
-  const openAdd = () => {
-    setEditingTask(null);
-    setModalOpen(true);
-  };
+  const canEdit = (task) => task.user_id === user?.id;
 
-  // Stats
-  const total = tasks.length;
-  const completed = tasks.filter(t => t.status === 'Completed').length;
-  const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-  const blocked = tasks.filter(t => t.status === 'Blocked').length;
-  const totalEst = tasks.reduce((s, t) => s + (t.estimated_hours || 0), 0);
-  const totalActual = tasks.reduce((s, t) => s + (t.actual_hours || 0), 0);
+  // Stats across displayed tasks
+  const total      = displayedTasks.length;
+  const completed  = displayedTasks.filter(t => t.status === 'Completed').length;
+  const inProgress = displayedTasks.filter(t => t.status === 'In Progress').length;
+  const blocked    = displayedTasks.filter(t => t.status === 'Blocked').length;
+
+  // Group by member for team view
+  const grouped = displayedTasks.reduce((acc, t) => {
+    const key = t.member_name || 'Unknown';
+    if (!acc[key]) acc[key] = { tasks: [], isMe: t.user_id === user?.id };
+    acc[key].tasks.push(t);
+    return acc;
+  }, {});
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Tasks</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Track your weekly work, {user?.name?.split(' ')[0]}</p>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {viewMode === 'mine' ? 'My Tasks' : `${user?.team} Team Tasks`}
+            </h1>
+            {user?.team && (
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full text-white ${teamStyle.bg}`}>
+                {user.team}
+              </span>
+            )}
+          </div>
+          <p className="text-gray-500 text-sm">
+            {viewMode === 'mine'
+              ? 'Your personal task log'
+              : `All tasks across your ${user?.team} team — you can only edit your own`}
+          </p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="btn-primary flex items-center gap-2">
           <span>+</span> Add Task
         </button>
       </div>
 
-      {/* Week selector */}
-      <div className="card p-4 mb-6 flex items-center gap-4 flex-wrap">
+      {/* Week + View toggles */}
+      <div className={`card p-4 mb-5 flex flex-wrap items-center gap-4 border-l-4 ${teamStyle.border}`}>
         <span className="text-sm font-medium text-gray-700 shrink-0">📅 Week:</span>
         <select
           className="input max-w-xs"
@@ -103,52 +127,45 @@ export default function MemberDashboard() {
         >
           {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
         </select>
-        <span className="text-sm text-gray-500 ml-auto">{total} task{total !== 1 ? 's' : ''} this week</span>
+
+        {/* Team / Mine toggle */}
+        <div className="ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+          <button
+            onClick={() => setViewMode('team')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              viewMode === 'team' ? `${teamStyle.bg} text-white shadow-sm` : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            👥 {user?.team} Team
+          </button>
+          <button
+            onClick={() => setViewMode('mine')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              viewMode === 'mine' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            👤 My Tasks
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
       {total > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           {[
-            { label: 'Total', value: total, color: 'text-gray-900', bg: 'bg-gray-50', icon: '📋' },
-            { label: 'Completed', value: completed, color: 'text-emerald-700', bg: 'bg-emerald-50', icon: '✅' },
-            { label: 'In Progress', value: inProgress, color: 'text-blue-700', bg: 'bg-blue-50', icon: '🔄' },
-            { label: 'Blocked', value: blocked, color: 'text-red-700', bg: 'bg-red-50', icon: '🚫' },
+            { label: 'Total',       value: total,      icon: '📋', color: 'text-gray-900' },
+            { label: 'Completed',   value: completed,  icon: '✅', color: 'text-emerald-600' },
+            { label: 'In Progress', value: inProgress, icon: '🔄', color: 'text-blue-600' },
+            { label: 'Blocked',     value: blocked,    icon: '🚫', color: 'text-red-600' },
           ].map(s => (
-            <div key={s.label} className={`card p-4 ${s.bg}`}>
-              <div className="flex items-center gap-2 mb-1">
+            <div key={s.label} className="card p-4">
+              <div className="flex items-center gap-1.5 mb-1">
                 <span>{s.icon}</span>
-                <span className="text-xs text-gray-500 font-medium">{s.label}</span>
+                <span className="text-xs text-gray-500">{s.label}</span>
               </div>
               <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Hours summary */}
-      {total > 0 && (
-        <div className="card p-4 mb-6 flex items-center gap-6">
-          <div>
-            <p className="text-xs text-gray-500">Estimated Hours</p>
-            <p className="text-xl font-bold text-gray-900">{totalEst.toFixed(1)}h</p>
-          </div>
-          <div className="w-px h-8 bg-gray-200" />
-          <div>
-            <p className="text-xs text-gray-500">Actual Hours</p>
-            <p className="text-xl font-bold text-gray-900">{totalActual.toFixed(1)}h</p>
-          </div>
-          {totalEst > 0 && (
-            <>
-              <div className="w-px h-8 bg-gray-200" />
-              <div>
-                <p className="text-xs text-gray-500">Completion Rate</p>
-                <p className="text-xl font-bold text-emerald-600">
-                  {total > 0 ? Math.round((completed / total) * 100) : 0}%
-                </p>
-              </div>
-            </>
-          )}
         </div>
       )}
 
@@ -157,20 +174,55 @@ export default function MemberDashboard() {
         <div className="flex justify-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
-      ) : tasks.length === 0 ? (
+      ) : displayedTasks.length === 0 ? (
         <div className="card p-16 text-center">
           <p className="text-4xl mb-3">📝</p>
-          <p className="text-gray-600 font-medium">No tasks for {formatWeekLabel(selectedWeek)}</p>
-          <p className="text-gray-400 text-sm mt-1">Click "Add Task" to log your first task for this week</p>
-          <button onClick={openAdd} className="btn-primary mt-4">+ Add Your First Task</button>
+          <p className="text-gray-600 font-medium">
+            No tasks for {formatWeekLabel(selectedWeek)}
+          </p>
+          <p className="text-gray-400 text-sm mt-1">
+            {viewMode === 'mine' ? 'Click "Add Task" to log your first task' : `No ${user?.team} team tasks this week yet`}
+          </p>
+          <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="btn-primary mt-4">
+            + Add Task
+          </button>
+        </div>
+      ) : viewMode === 'team' ? (
+        // Grouped by member
+        <div className="space-y-6">
+          {Object.entries(grouped).map(([memberName, { tasks: mTasks, isMe }]) => (
+            <div key={memberName}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${teamStyle.bg}`}>
+                  {memberName.charAt(0)}
+                </div>
+                <span className="font-semibold text-gray-800 text-sm">{memberName}</span>
+                {isMe && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">You</span>}
+                <span className="text-xs text-gray-400">{mTasks.length} task{mTasks.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="space-y-2 pl-9">
+                {mTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    showMember={false}
+                    onEdit={canEdit(task) ? (t) => { setEditingTask(t); setModalOpen(true); } : null}
+                    onDelete={canEdit(task) ? setDeleteTarget : null}
+                    readOnly={!canEdit(task)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
+        // Flat list — my tasks only
         <div className="space-y-3">
-          {tasks.map(task => (
+          {displayedTasks.map(task => (
             <TaskCard
               key={task.id}
               task={task}
-              onEdit={handleEdit}
+              onEdit={(t) => { setEditingTask(t); setModalOpen(true); }}
               onDelete={setDeleteTarget}
             />
           ))}
@@ -188,7 +240,7 @@ export default function MemberDashboard() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Delete Task"
-        message={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteTarget?.title}"?`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import StatusBadge from './StatusBadge';
 import PriorityBadge from './PriorityBadge';
+import { useAuth } from '../context/AuthContext';
 import { currentWeekStart, formatWeekLabel } from '../utils/weekUtils';
 
 const TEAMS = ['VPM', 'CWGW'];
@@ -15,10 +16,14 @@ const STAT_STATUS = ['Completed', 'In Progress', 'Blocked', 'Not Started'];
 const STATUS_DOT  = { 'Completed': 'bg-emerald-500', 'In Progress': 'bg-blue-500', 'Blocked': 'bg-red-500', 'Not Started': 'bg-gray-300' };
 
 export default function NissanTasksSlider() {
+  const { user } = useAuth();
+  const isManager = user?.role === 'manager';
+  const memberTeam = user?.team || 'VPM';
+
   const [open, setOpen]           = useState(true);
   const [tasks, setTasks]         = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [activeTeam, setActiveTeam] = useState('VPM');
+  const [activeTeam, setActiveTeam] = useState(isManager ? 'VPM' : memberTeam);
   const [expandedTask, setExpandedTask] = useState(null);
   const week = currentWeekStart();
 
@@ -34,7 +39,10 @@ export default function NissanTasksSlider() {
     fetch();
   }, [week]);
 
-  const teamTasks = tasks.filter(t => t.member_team === activeTeam);
+  // For managers, filter by selected tab; for members the API already scopes to their team
+  const teamTasks = isManager
+    ? tasks.filter(t => t.member_team === activeTeam)
+    : tasks;
 
   const stats = STAT_STATUS.map(s => ({
     label: s,
@@ -77,22 +85,28 @@ export default function NissanTasksSlider() {
             </div>
           </div>
 
-          {/* Team tabs */}
-          <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
-            {TEAMS.map(t => (
-              <button
-                key={t}
-                onClick={() => { setActiveTeam(t); setExpandedTask(null); }}
-                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${
-                  activeTeam === t
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-white/80 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          {/* Team tabs — managers can switch, members are locked to their team */}
+          {isManager ? (
+            <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
+              {TEAMS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setActiveTeam(t); setExpandedTask(null); }}
+                  className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${
+                    activeTeam === t
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-black/20 rounded-lg px-3 py-1.5 text-center">
+              <span className="text-white text-xs font-bold tracking-wide">{memberTeam} Team</span>
+            </div>
+          )}
         </div>
 
         {/* Stats bar */}
