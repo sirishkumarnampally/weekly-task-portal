@@ -3,7 +3,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-const emptyForm = { name: '', email: '', role: 'member', password: '' };
+const TEAMS = ['VPM', 'CWGW'];
+const emptyForm = { name: '', email: '', role: 'member', team: 'VPM', password: '' };
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -36,7 +37,7 @@ export default function ManageUsers() {
   const openAdd = () => { setEditingUser(null); setForm(emptyForm); setModalOpen(true); };
   const openEdit = (user) => {
     setEditingUser(user);
-    setForm({ name: user.name, email: user.email, role: user.role, password: '' });
+    setForm({ name: user.name, email: user.email, role: user.role, team: user.team || 'VPM', password: '' });
     setModalOpen(true);
   };
 
@@ -227,11 +228,20 @@ export default function ManageUsers() {
                   </td>
                   <td className="px-5 py-3 text-gray-600">{u.email}</td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      u.role === 'manager' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {u.role === 'manager' ? '👔 Manager' : '👤 Member'}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        u.role === 'manager' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {u.role === 'manager' ? '👔 Manager' : '👤 Member'}
+                      </span>
+                      {u.team && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                          u.team === 'VPM' ? 'bg-blue-600 text-white' : 'bg-violet-600 text-white'
+                        }`}>
+                          {u.team}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-gray-500 text-xs">{u.created_at?.split('T')[0]}</td>
                   <td className="px-5 py-3">
@@ -271,12 +281,21 @@ export default function ManageUsers() {
                 <label className="label">Email</label>
                 <input type="email" className="input" value={form.email} onChange={e => set('email', e.target.value)} required />
               </div>
-              <div>
-                <label className="label">Role</label>
-                <select className="input" value={form.role} onChange={e => set('role', e.target.value)}>
-                  <option value="member">Team Member</option>
-                  <option value="manager">Manager</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Role</label>
+                  <select className="input" value={form.role} onChange={e => set('role', e.target.value)}>
+                    <option value="member">Team Member</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Team</label>
+                  <select className="input" value={form.team} onChange={e => set('team', e.target.value)}>
+                    <option value="">— None —</option>
+                    {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="label">{editingUser ? 'New Password (leave blank to keep)' : 'Password'}</label>

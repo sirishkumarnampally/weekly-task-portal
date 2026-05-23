@@ -10,13 +10,17 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 
 // List all users (manager only)
 router.get('/', authenticate, requireManager, (req, res) => {
-  const users = db.prepare('SELECT id, name, email, role, created_at FROM users ORDER BY name').all();
-  res.json(users);
+  const { team } = req.query;
+  let query = 'SELECT id, name, email, role, team, created_at FROM users WHERE 1=1';
+  const params = [];
+  if (team) { query += ' AND team = ?'; params.push(team); }
+  query += ' ORDER BY team, name';
+  res.json(db.prepare(query).all(...params));
 });
 
 // Create user (manager only)
 router.post('/', authenticate, requireManager, (req, res) => {
-  const { name, email, role, password } = req.body;
+  const { name, email, role, password, team } = req.body;
   if (!name || !email || !role || !password) {
     return res.status(400).json({ error: 'name, email, role and password are required' });
   }
@@ -28,32 +32,33 @@ router.post('/', authenticate, requireManager, (req, res) => {
   if (existing) return res.status(409).json({ error: 'Email already in use' });
 
   const result = db.prepare(
-    'INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, ?, ?)'
-  ).run(name, email.toLowerCase().trim(), role, bcrypt.hashSync(password, 10));
+    'INSERT INTO users (name, email, role, team, password_hash) VALUES (?, ?, ?, ?, ?)'
+  ).run(name, email.toLowerCase().trim(), role, team || '', bcrypt.hashSync(password, 10));
 
-  const user = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
+  const user = db.prepare('SELECT id, name, email, role, team, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(user);
 });
 
 // Update user (manager only)
 router.put('/:id', authenticate, requireManager, (req, res) => {
-  const { name, email, role, password } = req.body;
+  const { name, email, role, password, team } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const passwordHash = password ? bcrypt.hashSync(password, 10) : user.password_hash;
 
   db.prepare(
-    'UPDATE users SET name = ?, email = ?, role = ?, password_hash = ? WHERE id = ?'
+    'UPDATE users SET name = ?, email = ?, role = ?, team = ?, password_hash = ? WHERE id = ?'
   ).run(
     name ?? user.name,
     email ? email.toLowerCase().trim() : user.email,
     role ?? user.role,
+    team !== undefined ? team : user.team,
     passwordHash,
     req.params.id
   );
 
-  res.json(db.prepare('SELECT id, name, email, role, created_at FROM users WHERE id = ?').get(req.params.id));
+  res.json(db.prepare('SELECT id, name, email, role, team, created_at FROM users WHERE id = ?').get(req.params.id));
 });
 
 // Delete user (manager only)

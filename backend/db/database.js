@@ -19,6 +19,7 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('manager', 'member')),
     password_hash TEXT NOT NULL,
+    team TEXT NOT NULL DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -38,28 +39,54 @@ db.exec(`
   );
 `);
 
+// Migrate: add team column to existing DBs that predate this field
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN team TEXT NOT NULL DEFAULT ''`);
+} catch { /* column already exists — safe to ignore */ }
+
 // Seed demo users if table is empty
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 if (userCount.count === 0) {
   const hash = (pw) => bcrypt.hashSync(pw, 10);
   const insert = db.prepare(
-    'INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, ?, ?)'
+    'INSERT INTO users (name, email, role, team, password_hash) VALUES (?, ?, ?, ?, ?)'
   );
-  insert.run('Alice Manager', 'manager@demo.com', 'manager', hash('manager123'));
-  insert.run('Bob Smith', 'bob@demo.com', 'member', hash('member123'));
-  insert.run('Carol Jones', 'carol@demo.com', 'member', hash('member123'));
-  insert.run('David Lee', 'david@demo.com', 'member', hash('member123'));
 
-  // Seed some sample tasks
+  // Managers
+  insert.run('Alice Manager', 'manager@demo.com', 'manager', 'VPM',  hash('manager123'));
+
+  // VPM team
+  insert.run('Bob Smith',   'bob@demo.com',   'member', 'VPM',  hash('member123'));
+  insert.run('Carol Jones', 'carol@demo.com', 'member', 'VPM',  hash('member123'));
+
+  // CWGW team
+  insert.run('David Lee',   'david@demo.com', 'member', 'CWGW', hash('member123'));
+  insert.run('Eva Chen',    'eva@demo.com',   'member', 'CWGW', hash('member123'));
+
+  // Get inserted IDs
+  const bob   = db.prepare("SELECT id FROM users WHERE email='bob@demo.com'").get();
+  const carol = db.prepare("SELECT id FROM users WHERE email='carol@demo.com'").get();
+  const david = db.prepare("SELECT id FROM users WHERE email='david@demo.com'").get();
+  const eva   = db.prepare("SELECT id FROM users WHERE email='eva@demo.com'").get();
+
   const taskInsert = db.prepare(`
     INSERT INTO tasks (user_id, week_start_date, title, description, priority, status, estimated_hours, actual_hours, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  taskInsert.run(2, '2026-05-19', 'Setup CI/CD pipeline', 'Configure GitHub Actions for automated testing', 'High', 'Completed', 8, 10, 'Ran into Docker issues, resolved with workaround');
-  taskInsert.run(2, '2026-05-19', 'Write unit tests for auth module', '', 'Medium', 'In Progress', 6, 4, '');
-  taskInsert.run(3, '2026-05-19', 'Design new landing page mockups', 'Use Figma to create 3 variants', 'High', 'Completed', 12, 11, 'Client approved variant 2');
-  taskInsert.run(3, '2026-05-19', 'Implement dark mode toggle', '', 'Low', 'Not Started', 4, 0, '');
-  taskInsert.run(4, '2026-05-19', 'Database schema review', 'Review and optimize existing queries', 'High', 'Blocked', 6, 2, 'Waiting for DBA approval');
+
+  const week = '2026-05-19';
+
+  // VPM tasks
+  taskInsert.run(bob.id,   week, 'Setup CI/CD pipeline',            'Configure GitHub Actions for automated testing', 'High',   'Completed',   8, 10, 'Ran into Docker issues, resolved with workaround');
+  taskInsert.run(bob.id,   week, 'Write unit tests for auth module', '',                                              'Medium', 'In Progress', 6,  4, '');
+  taskInsert.run(carol.id, week, 'Design new landing page mockups',  'Use Figma to create 3 variants',               'High',   'Completed',  12, 11, 'Client approved variant 2');
+  taskInsert.run(carol.id, week, 'Implement dark mode toggle',       '',                                              'Low',    'Not Started', 4,  0, '');
+
+  // CWGW tasks
+  taskInsert.run(david.id, week, 'Database schema review',           'Review and optimize existing queries',          'High',   'Blocked',     6,  2, 'Waiting for DBA approval');
+  taskInsert.run(david.id, week, 'API rate limiting implementation',  'Add throttle middleware to all endpoints',      'High',   'In Progress', 8,  5, '');
+  taskInsert.run(eva.id,   week, 'QA regression test suite',         'Full regression for v2.1 release',             'Medium', 'Not Started', 10, 0, '');
+  taskInsert.run(eva.id,   week, 'Update deployment runbook',        '',                                              'Low',    'Completed',   3,  3, 'Done, shared with team');
 }
 
 module.exports = db;

@@ -6,11 +6,11 @@ const router = express.Router();
 
 // Get tasks — members see only their own, managers see all (with optional filters)
 router.get('/', authenticate, (req, res) => {
-  const { week, user_id, status, priority } = req.query;
+  const { week, user_id, status, priority, team } = req.query;
   const isManager = req.user.role === 'manager';
 
   let query = `
-    SELECT t.*, u.name as member_name, u.email as member_email
+    SELECT t.*, u.name as member_name, u.email as member_email, u.team as member_team
     FROM tasks t
     JOIN users u ON t.user_id = u.id
     WHERE 1=1
@@ -25,6 +25,10 @@ router.get('/', authenticate, (req, res) => {
     params.push(user_id);
   }
 
+  if (team) {
+    query += ' AND u.team = ?';
+    params.push(team);
+  }
   if (week) {
     query += ' AND t.week_start_date = ?';
     params.push(week);

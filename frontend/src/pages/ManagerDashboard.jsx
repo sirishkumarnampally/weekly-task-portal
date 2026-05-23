@@ -14,7 +14,7 @@ export default function ManagerDashboard() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ week: '', user_id: '', status: '', priority: '' });
+  const [filters, setFilters] = useState({ week: '', user_id: '', status: '', priority: '', team: '' });
   const [sortField, setSortField] = useState('week_start_date');
   const [sortDir, setSortDir] = useState('desc');
   const [modalOpen, setModalOpen] = useState(false);
@@ -193,7 +193,25 @@ export default function ManagerDashboard() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div>
+            <label className="label text-xs">Team</label>
+            <div className="flex gap-1">
+              {['', 'VPM', 'CWGW'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setFilter('team', t)}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${
+                    filters.team === t
+                      ? t === 'VPM'  ? 'bg-blue-600 text-white border-blue-600'
+                      : t === 'CWGW' ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-gray-800 text-white border-gray-800'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  }`}
+                >{t || 'All'}</button>
+              ))}
+            </div>
+          </div>
           <div>
             <label className="label text-xs">Week</label>
             <select className="input text-sm" value={filters.week} onChange={e => setFilter('week', e.target.value)}>
@@ -202,12 +220,12 @@ export default function ManagerDashboard() {
             </select>
           </div>
           <div>
-            <label className="label text-xs">Team Member</label>
+            <label className="label text-xs">Member</label>
             <select className="input text-sm" value={filters.user_id} onChange={e => setFilter('user_id', e.target.value)}>
               <option value="">All members</option>
-              {users.filter(u => u.role === 'member').map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
+              {users.filter(u => u.role === 'member')
+                .filter(u => !filters.team || u.team === filters.team)
+                .map(u => <option key={u.id} value={u.id}>{u.name} ({u.team})</option>)}
             </select>
           </div>
           <div>
@@ -319,7 +337,16 @@ export default function ManagerDashboard() {
               <tbody className="divide-y divide-gray-100">
                 {sorted.map(task => (
                   <tr key={task.id} className="hover:bg-gray-50 transition-colors group">
-                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{task.member_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{task.member_name}</span>
+                        {task.member_team && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'}`}>
+                            {task.member_team}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{task.week_start_date}</td>
                     <td className="px-4 py-3 max-w-xs">
                       <p className="font-medium text-gray-900 truncate">{task.title}</p>
