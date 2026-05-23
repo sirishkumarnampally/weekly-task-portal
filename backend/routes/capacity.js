@@ -222,11 +222,60 @@ router.post('/bulk', authenticate, requireManager, (req, res) => {
   res.json({ ok: true, count: entries.length });
 });
 
-// GET /api/capacity/leave-summary?week=YYYY-MM-DD&team=  — all members with leave for a week (manager view)
+// GET /api/capacity/leave-summary?week=YYYY-MM-DD|month=YYYY-MM&team=
+// Returns all members with their leave. month= aggregates across all weeks of the month.
 router.get('/leave-summary', authenticate, requireManager, (req, res) => {
-  const { week, team } = req.query;
-  if (!week) return res.status(400).json({ error: 'week required' });
+  const { week, month, team } = req.query;
+  if (!week && !month) return res.status(400).json({ error: 'week or month required' });
 
+  if (month) {
+    // Aggregate leave per user for the entire month
+    let q = `
+      SELECT u.id, u.name, u.team,
+             COALESCE(SUM(c.leave_hours), 0) AS leave_hours
+      FROM users u
+      LEFT JOIN capacity c ON c.user_id = u.id
+        AND strftime('%Y-%m', c.week_start_date) = ?
+      WHERE u.role = 'member'
+    `;
+    const p = [month];
+    if (team) { q += ' AND u.team = ?'; p.push(team); }
+    q += ' GROUP BY u.id, u.name, u.team ORDER BY u.team, u.name';
+    const members = db.prepare(q).all(...p);
+
+    // Per-week detail for members who have leave
+    let wq = `
+      SELECT c.user_id, c.week_start_date, c.leave_hours
+      FROM capacity c
+      JOIN users u ON c.user_id = u.id
+      WHERE u.role = 'member'
+        AND strftime('%Y-%m', c.week_start_date) = ?
+        AND c.leave_hours > 0
+    `;
+    const wp = [month];
+    if (team) { wq += ' AND u.team = ?'; wp.push(team); }
+    wq += ' ORDER BY c.week_start_date';
+    const weekRows = db.prepare(wq).all(...wp);
+
+    const weekMap = {};
+    for (const r of weekRows) {
+      if (!weekMap[r.user_id]) weekMap[r.user_id] = [];
+      weekMap[r.user_id].push({
+        week:       r.week_start_date,
+        leave_hours: r.leave_hours,
+        leave_days:  r.leave_hours / 9,
+      });
+    }
+
+    return res.json(members.map(m => ({
+      ...m,
+      leave_days: m.leave_hours / 9,
+      on_leave:   m.leave_hours > 0,
+      weeks:      weekMap[m.id] || [],
+    })));
+  }
+
+  // Single-week mode
   let q = `
     SELECT u.id, u.name, u.team,
            COALESCE(c.leave_hours, 0) AS leave_hours
@@ -243,6 +292,7 @@ router.get('/leave-summary', authenticate, requireManager, (req, res) => {
     ...m,
     leave_days: m.leave_hours / 9,
     on_leave:   m.leave_hours > 0,
+    weeks:      [],
   })));
 });
 
