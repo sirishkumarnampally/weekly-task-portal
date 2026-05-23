@@ -26,85 +26,147 @@ export default function Login() {
   const fillDemo = (email, password) => setForm({ email, password });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex flex-col">
+    <div className="min-h-screen flex">
 
-      {/* ── Hero Banner ── */}
-      <div className="relative overflow-hidden shrink-0">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-20 left-1/4 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-10" />
-          <div className="absolute -top-20 right-1/4 w-96 h-96 bg-violet-500 rounded-full blur-3xl opacity-10" />
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        </div>
+      {/* ── LEFT: Brand Banner ── */}
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 overflow-hidden">
 
-        <div className="relative max-w-5xl mx-auto px-6 py-10">
-          {/* Top nav bar */}
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center border border-white/20 shadow-inner">
-                <span className="text-lg">🚗</span>
-              </div>
-              <div>
-                <p className="text-white font-extrabold text-sm leading-none tracking-wide">NISSAN</p>
-                <p className="text-blue-300/80 text-[10px] tracking-widest uppercase">Task Portal</p>
-              </div>
+        {/* Background blobs */}
+        <div className="absolute -top-32 -left-20 w-96 h-96 bg-blue-600 rounded-full blur-3xl opacity-20 pointer-events-none" />
+        <div className="absolute -bottom-32 -right-20 w-96 h-96 bg-violet-600 rounded-full blur-3xl opacity-20 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-800 rounded-full blur-3xl opacity-10 pointer-events-none" />
+
+        <div className="relative flex flex-col h-full px-12 py-10">
+
+          {/* Nissan logo / wordmark */}
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-10 flex items-center justify-center">
+              <svg viewBox="0 0 110 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <ellipse cx="55" cy="22" rx="53" ry="20" stroke="white" strokeWidth="3"/>
+                <rect x="2" y="18" width="20" height="8" fill="white"/>
+                <rect x="88" y="18" width="20" height="8" fill="white"/>
+                <text x="55" y="26.5" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="white" letterSpacing="2">NISSAN</text>
+              </svg>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 backdrop-blur">VPM</span>
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 backdrop-blur">CWGW</span>
+            <div>
+              <p className="text-white font-extrabold text-base leading-none tracking-widest uppercase">Nissan</p>
+              <p className="text-blue-300/70 text-[10px] tracking-widest uppercase">Weekly Task Portal</p>
+            </div>
+            <div className="h-8 w-px bg-white/10 mx-1" />
+            <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-400/30 rounded-full px-3 py-1.5 backdrop-blur">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-[11px] font-semibold bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent tracking-wide whitespace-nowrap">
+                Team Collaboration Platform
+              </span>
             </div>
           </div>
 
           {/* Headline */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-4 backdrop-blur">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-white/70 text-xs font-medium">Team Collaboration Platform</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight leading-tight">
+          <div className="mt-16 mb-12">
+            <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
               Weekly Task<br />
               <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 bg-clip-text text-transparent">
                 Management Portal
               </span>
             </h1>
-            <p className="text-blue-200/70 text-sm max-w-md mx-auto leading-relaxed">
-              Track, manage and report weekly tasks across VPM and CWGW teams — with role-based access and one-click Excel exports.
+            <p className="text-blue-200/60 text-sm leading-relaxed max-w-sm">
+              Track, manage, and report weekly tasks across teams — with role-based access, capacity reports, and one-click Excel exports.
             </p>
           </div>
 
-          {/* Team cards */}
-          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-            <div className="group bg-blue-600/10 hover:bg-blue-600/20 backdrop-blur border border-blue-400/20 hover:border-blue-400/40 rounded-2xl p-4 text-center transition-all duration-200">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
-                <span className="text-xl">🚘</span>
+          {/* VPM Card */}
+          <div className="group bg-blue-600/10 hover:bg-blue-600/18 border border-blue-400/20 hover:border-blue-400/40 rounded-2xl p-6 mb-4 backdrop-blur transition-all duration-200">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <span className="text-2xl">🚘</span>
               </div>
-              <p className="text-white font-bold text-sm">VPM</p>
-              <p className="text-blue-300/70 text-[10px] mt-0.5 leading-snug">Vehicle Programme<br />Management</p>
-            </div>
-            <div className="group bg-violet-600/10 hover:bg-violet-600/20 backdrop-blur border border-violet-400/20 hover:border-violet-400/40 rounded-2xl p-4 text-center transition-all duration-200">
-              <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
-                <span className="text-xl">🔌</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white font-extrabold text-lg leading-none">VPM</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/25 text-blue-300 border border-blue-400/30">Team</span>
+                </div>
+                <p className="text-blue-200 font-semibold text-sm mb-2">Vehicle Profile Management</p>
+                <p className="text-blue-300/60 text-xs leading-relaxed">
+                  A centralized data store where connected car metadata is stored and shared with all other connected services across the ecosystem.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/20">AMO</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">PJ</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-400/20">Infra</span>
+                </div>
               </div>
-              <p className="text-white font-bold text-sm">CWGW</p>
-              <p className="text-violet-300/70 text-[10px] mt-0.5 leading-snug">Connected &amp; Gateway<br />Work Group</p>
             </div>
+          </div>
+
+          {/* CWGW Card */}
+          <div className="group bg-violet-600/10 hover:bg-violet-600/18 border border-violet-400/20 hover:border-violet-400/40 rounded-2xl p-6 backdrop-blur transition-all duration-200">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-violet-500/20 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <span className="text-2xl">🔌</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white font-extrabold text-lg leading-none">CWGW</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/25 text-violet-300 border border-violet-400/30">Team</span>
+                </div>
+                <p className="text-violet-200 font-semibold text-sm mb-2">Carwings Gateway</p>
+                <p className="text-violet-300/60 text-xs leading-relaxed">
+                  A connected service providing charging station info, weather forecasts, news, and other connected services information to vehicles.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/20">AMO</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-400/20">Infra</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer note */}
+          <div className="mt-auto pt-10">
+            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
+            <p className="text-white/25 text-xs text-center tracking-wide">
+              © {new Date().getFullYear()} Nissan Motor Co. — Internal Use Only
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ── Login Form ── */}
-      <div className="flex-1 flex items-start justify-center px-4 pt-8 pb-10">
-        <div className="w-full max-w-md">
+      {/* ── RIGHT: Login Form ── */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 px-6 py-12">
+
+        {/* Mobile logo (shown only on small screens) */}
+        <div className="flex lg:hidden items-center gap-3 mb-8">
+          <div className="w-14 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow px-2">
+            <svg viewBox="0 0 110 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+              <ellipse cx="55" cy="22" rx="53" ry="20" stroke="white" strokeWidth="3"/>
+              <rect x="2" y="18" width="20" height="8" fill="white"/>
+              <rect x="88" y="18" width="20" height="8" fill="white"/>
+              <text x="55" y="26.5" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="white" letterSpacing="2">NISSAN</text>
+            </svg>
+          </div>
+          <div>
+            <p className="font-extrabold text-slate-800 text-sm tracking-wide uppercase">Nissan</p>
+            <p className="text-slate-400 text-[10px] tracking-widest uppercase">Task Portal</p>
+          </div>
+        </div>
+
+        <div className="w-full max-w-sm">
+
+          {/* Heading */}
+          <div className="mb-8 text-center lg:text-left">
+            <h2 className="text-2xl font-extrabold text-slate-800 mb-1">Welcome back</h2>
+            <p className="text-slate-500 text-sm">Sign in to your portal account</p>
+          </div>
 
           {/* Form card */}
-          <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl overflow-hidden">
-            {/* Card header */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/80 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center gap-3">
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                 <span className="text-base">📋</span>
               </div>
               <div>
                 <p className="text-white font-bold text-sm leading-none">Sign In</p>
-                <p className="text-white/70 text-xs mt-0.5">Enter your credentials</p>
+                <p className="text-white/70 text-xs mt-0.5">Enter your credentials below</p>
               </div>
             </div>
 
@@ -136,7 +198,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-2"
+                  className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-1"
                 >
                   {loading
                     ? <><span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Signing in...</>
@@ -146,42 +208,42 @@ export default function Login() {
             </div>
           </div>
 
-          <p className="text-center text-sm text-blue-200/60 mt-4">
+          <p className="text-center text-sm text-slate-500 mt-4">
             New to the portal?{' '}
-            <Link to="/register" className="text-blue-300 hover:text-white font-medium underline underline-offset-2 transition-colors">
+            <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
               Create an account
             </Link>
           </p>
 
           {/* Demo credentials */}
-          <div className="mt-5">
+          <div className="mt-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 h-px bg-white/10" />
-              <p className="text-white/40 text-xs font-medium uppercase tracking-widest">Demo Accounts</p>
-              <div className="flex-1 h-px bg-white/10" />
+              <div className="flex-1 h-px bg-slate-200" />
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Demo Accounts</p>
+              <div className="flex-1 h-px bg-slate-200" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => fillDemo('manager@demo.com', 'manager123')}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400/40 rounded-xl p-3 text-left transition-all backdrop-blur group"
+                className="bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl p-3 text-left transition-all shadow-sm group"
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span>👔</span>
-                  <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded">Manager</span>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Manager</span>
                 </div>
-                <p className="text-white/70 text-xs">manager@demo.com</p>
-                <p className="text-white/30 text-xs">manager123</p>
+                <p className="text-slate-600 text-xs">manager@demo.com</p>
+                <p className="text-slate-400 text-xs">manager123</p>
               </button>
               <button
                 onClick={() => fillDemo('bob@demo.com', 'member123')}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/40 rounded-xl p-3 text-left transition-all backdrop-blur group"
+                className="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-3 text-left transition-all shadow-sm group"
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span>👤</span>
-                  <span className="text-[10px] font-bold text-blue-300 bg-blue-500/20 px-1.5 py-0.5 rounded">Member (VPM)</span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">VPM Member</span>
                 </div>
-                <p className="text-white/70 text-xs">bob@demo.com</p>
-                <p className="text-white/30 text-xs">member123</p>
+                <p className="text-slate-600 text-xs">bob@demo.com</p>
+                <p className="text-slate-400 text-xs">member123</p>
               </button>
             </div>
           </div>

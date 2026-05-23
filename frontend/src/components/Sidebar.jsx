@@ -65,6 +65,7 @@ export default function Sidebar() {
         {user?.role === 'manager' ? (
           <>
             <NavItem to="/manager"   icon="📊" label="Dashboard" />
+            <NavItem to="/stats"     icon="📉" label="Team Stats" />
             <NavItem to="/capacity"  icon="📈" label="Capacity Report" />
             <NavItem to="/users"     icon="👥" label="Manage Users" />
           </>

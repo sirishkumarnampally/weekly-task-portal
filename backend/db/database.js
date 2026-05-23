@@ -69,7 +69,7 @@ if (userCount.count === 0) {
   );
 
   // Managers
-  insert.run('Alice Manager', 'manager@demo.com', 'manager', 'VPM',  hash('manager123'));
+  insert.run('Nampally Sirish Kumar', 'manager@demo.com', 'manager', 'VPM',  hash('manager123'));
 
   // VPM team
   insert.run('Bob Smith',   'bob@demo.com',   'member', 'VPM',  hash('member123'));

@@ -5,15 +5,16 @@ const STATUSES   = ['In Progress', 'Completed'];
 const TASK_TYPES = ['Regular', 'Irregular'];
 
 const TEAM_TYPE_OPTIONS = {
-  VPM:  ['AMO', 'PJ'],
-  CWGW: ['Infra', 'Review & Manage'],
+  VPM:  ['AMO', 'PJ', 'Infra'],
+  CWGW: ['AMO', 'Infra'],
 };
 
 const TEAM_STYLE = {
-  VPM:  { bg: 'bg-blue-700',   text: 'text-blue-700' },
-  CWGW: { bg: 'bg-violet-700', text: 'text-violet-700' },
-  AMO:  { bg: 'bg-blue-600',   text: 'text-blue-700' },
-  PJ:   { bg: 'bg-indigo-600', text: 'text-indigo-700' },
+  VPM:   { bg: 'bg-blue-700',   text: 'text-blue-700' },
+  CWGW:  { bg: 'bg-violet-700', text: 'text-violet-700' },
+  AMO:   { bg: 'bg-blue-600',   text: 'text-blue-700' },
+  PJ:    { bg: 'bg-indigo-600', text: 'text-indigo-700' },
+  Infra: { bg: 'bg-teal-600',   text: 'text-teal-700' },
 };
 
 const emptyForm = (weekStart = currentWeekStart()) => ({
@@ -202,12 +203,6 @@ export default function TaskFormModal({ isOpen, onClose, onSave, initialData, me
                 onChange={e => set('hours', e.target.value)}
               />
             </div>
-          </div>
-
-          {/* ── Notes ── */}
-          <div>
-            <label className="label">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
-            <textarea className="input resize-none" rows={2} placeholder="Any comments or blockers…" value={form.notes} onChange={e => set('notes', e.target.value)} />
           </div>
 
           <div className="flex gap-3 pt-2 justify-end border-t border-gray-100">

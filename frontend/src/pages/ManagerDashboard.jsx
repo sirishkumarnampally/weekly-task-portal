@@ -310,93 +310,115 @@ export default function ManagerDashboard() {
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '32%' }} />  {/* TASK */}
+                <col style={{ width: '8%' }} />   {/* STATUS */}
+                <col style={{ width: '5%' }} />   {/* Hours */}
+                <col style={{ width: '8%' }} />   {/* Task Type */}
+                <col style={{ width: '9%' }} />   {/* Requester */}
+                <col style={{ width: '7%' }} />   {/* WeekNO */}
+                <col style={{ width: '8%' }} />   {/* Owner */}
+                <col style={{ width: '9%' }} />   {/* Team_type */}
+                <col style={{ width: '10%' }} />  {/* Member */}
+                <col style={{ width: '4%' }} />   {/* Actions */}
+              </colgroup>
               <thead>
                 <tr className="bg-slate-800">
                   {[
-                    ['title',        'Task'],
-                    ['status',       'Status'],
+                    ['title',        'TASK'],
+                    ['status',       'STATUS'],
                     ['actual_hours', 'Hours'],
                     ['task_type',    'Task Type'],
                     ['requester',    'Requester'],
-                    ['week_no',      'Week No'],
+                    ['week_start_date', 'WeekNO'],
                     ['owner',        'Owner'],
-                    ['team_type',    'Team Type'],
+                    ['team_type',    'Team_type'],
+                    ['member_name',  'Member'],
                   ].map(([field, label]) => (
                     <th
                       key={field}
-                      className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-slate-700 select-none whitespace-nowrap border-r border-slate-600 last:border-0"
                       onClick={() => handleSort(field)}
+                      className="px-3 py-3 text-center text-xs font-bold text-white tracking-wider cursor-pointer hover:bg-slate-700 select-none whitespace-nowrap border-r border-slate-600 last:border-0"
                     >
                       {label}<SortIcon field={field} />
                     </th>
                   ))}
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider border-r border-slate-600 whitespace-nowrap">Member</th>
-                  <th className="px-3 py-3 w-16 border-0" />
+                  <th className="px-2 py-3 border-0" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sorted.map((task, idx) => (
                   <tr key={task.id} className={`hover:bg-blue-50 transition-colors group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <td className="px-3 py-2.5 border-x border-gray-100 max-w-[200px]">
-                      <p className="font-medium text-gray-900 truncate text-xs">{task.title}</p>
-                      {task.description && <p className="text-gray-400 text-[10px] truncate">{task.description}</p>}
+
+                    {/* TASK — wide, left-aligned */}
+                    <td className="px-3 py-2.5 border-r border-gray-100">
+                      <p className="font-semibold text-gray-900 truncate">{task.title}</p>
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-center">
+
+                    {/* STATUS */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center">
                       <StatusBadge status={task.status} />
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-center text-xs font-semibold text-gray-700">
-                      {task.actual_hours ?? 0}h
+
+                    {/* Hours */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center font-semibold text-gray-700">
+                      {task.actual_hours > 0 ? `${task.actual_hours}h` : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-center">
-                      {task.task_type ? (
-                        <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                          {task.task_type}
-                        </span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
+
+                    {/* Task Type */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center">
+                      {task.task_type
+                        ? <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">{task.task_type}</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-xs text-gray-600 text-center whitespace-nowrap">
+
+                    {/* Requester */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center text-gray-600 truncate">
                       {task.requester || <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-center">
-                      {task.week_no ? (
-                        <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">W{task.week_no}</span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
+
+                    {/* WeekNO — show formatted week date */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center">
+                      {task.week_start_date
+                        ? <span className="font-medium text-gray-700 whitespace-nowrap">{task.week_start_date.slice(5).replace('-', '/')}</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-xs text-gray-600 text-center whitespace-nowrap">
+
+                    {/* Owner */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center text-gray-600 truncate">
                       {task.owner || <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 text-center">
-                      {task.team_type ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${task.team_type === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'}`}>
-                          {task.team_type}
-                        </span>
-                      ) : task.member_team ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'}`}>
-                          {task.member_team}
-                        </span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
+
+                    {/* Team_type */}
+                    <td className="px-2 py-2.5 border-r border-gray-100 text-center">
+                      {(task.team_type || task.member_team)
+                        ? <span className={`font-bold px-2 py-0.5 rounded-full text-white text-[10px] ${
+                            task.team_type === 'AMO'   ? 'bg-blue-600' :
+                            task.team_type === 'PJ'    ? 'bg-indigo-600' :
+                            task.team_type === 'Infra' ? 'bg-teal-600' :
+                            task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'
+                          }`}>{task.team_type || task.member_team}</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 border-x border-gray-100 whitespace-nowrap">
+
+                    {/* Member */}
+                    <td className="px-2 py-2.5 border-r border-gray-100">
                       <div className="flex items-center gap-1.5">
                         <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 ${task.member_team === 'VPM' ? 'bg-blue-600' : 'bg-violet-600'}`}>
                           {task.member_name?.charAt(0)}
                         </div>
-                        <span className="text-xs text-gray-700 font-medium">{task.member_name}</span>
+                        <span className="text-gray-700 font-medium truncate">{task.member_name}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5">
+
+                    {/* Actions */}
+                    <td className="px-2 py-2.5">
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => { setEditingTask(task); setModalOpen(true); }}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Edit"
-                        >✏️</button>
-                        <button
-                          onClick={() => setDeleteTarget(task)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete"
-                        >🗑️</button>
+                        <button onClick={() => { setEditingTask(task); setModalOpen(true); }}
+                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors text-xs" title="Edit">✏️</button>
+                        <button onClick={() => setDeleteTarget(task)}
+                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors text-xs" title="Delete">🗑️</button>
                       </div>
                     </td>
                   </tr>

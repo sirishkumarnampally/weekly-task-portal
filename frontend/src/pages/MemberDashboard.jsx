@@ -21,6 +21,9 @@ export default function MemberDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [leaveDays, setLeaveDays] = useState('0');
+  const [savedLeaveHours, setSavedLeaveHours] = useState(0);
+  const [savingLeave, setSavingLeave] = useState(false);
   const weeks = weekOptions(12);
 
   const teamStyle = TEAM_STYLE[user?.team] || TEAM_STYLE.VPM;
@@ -39,7 +42,35 @@ export default function MemberDashboard() {
     }
   }, [selectedWeek]);
 
+  const fetchLeave = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/api/capacity/my-leave', { params: { week: selectedWeek } });
+      setSavedLeaveHours(data.leave_hours || 0);
+      setLeaveDays(String(data.leave_days || 0));
+    } catch {
+      setSavedLeaveHours(0);
+      setLeaveDays('0');
+    }
+  }, [selectedWeek]);
+
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => { fetchLeave(); }, [fetchLeave]);
+
+  const saveLeave = async () => {
+    setSavingLeave(true);
+    try {
+      const { data } = await axios.post('/api/capacity/leave', {
+        week_start_date: selectedWeek,
+        leave_days: parseFloat(leaveDays) || 0,
+      });
+      setSavedLeaveHours(data.leave_hours);
+      toast.success(`Leave saved — ${data.leave_hours}h deducted from capacity`);
+    } catch {
+      toast.error('Failed to save leave');
+    } finally {
+      setSavingLeave(false);
+    }
+  };
 
   const displayedTasks = viewMode === 'mine'
     ? tasks.filter(t => t.user_id === user?.id)
@@ -145,6 +176,41 @@ export default function MemberDashboard() {
             }`}
           >
             👤 My Tasks
+          </button>
+        </div>
+      </div>
+
+      {/* Holiday / Leave card */}
+      <div className="card p-4 mb-5 flex flex-wrap items-center gap-4 border-l-4 border-amber-400">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-lg">🏖️</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Holiday / Leave</p>
+            <p className="text-xs text-gray-400">for {formatWeekLabel(selectedWeek)}</p>
+          </div>
+          {savedLeaveHours > 0 && (
+            <span className="ml-1 text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+              {savedLeaveHours}h off
+            </span>
+          )}
+        </div>
+        <div className="ml-auto flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap">Days on leave:</label>
+            <input
+              type="number" min="0" max="5" step="0.5"
+              className="input w-20 text-center py-1.5 text-sm"
+              value={leaveDays}
+              onChange={e => setLeaveDays(e.target.value)}
+            />
+            <span className="text-xs text-gray-400">× 9h = <strong className="text-gray-700">{((parseFloat(leaveDays) || 0) * 9).toFixed(0)}h</strong></span>
+          </div>
+          <button
+            onClick={saveLeave}
+            disabled={savingLeave}
+            className="btn-primary text-xs px-4 py-1.5 disabled:opacity-50"
+          >
+            {savingLeave ? 'Saving…' : 'Save Leave'}
           </button>
         </div>
       </div>

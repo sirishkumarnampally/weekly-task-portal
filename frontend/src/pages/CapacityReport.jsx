@@ -110,7 +110,7 @@ function WeekBlock({ week, onEditCapacity }) {
                 {num(m.totalHours)}
               </td>
               <td className="text-center px-1 py-1 border border-gray-200 text-gray-600">
-                {num(m.leaveHours) || 0}
+                {num(m.leaveHours) ? (m.leaveHours / 9).toFixed(1).replace(/\.0$/, '') + ' d' : '—'}
               </td>
               <td className="border border-gray-100 bg-white" />
             </tr>
@@ -219,14 +219,16 @@ function MonthlyBlock({ monthly, monthDateRange, onEditCapacity }) {
 
 // ─── Capacity edit modal ─────────────────────────────────────────────────────
 function CapacityModal({ entry, onClose, onSave }) {
-  const [avail, setAvail] = useState(entry.availableHours ?? 0);
-  const [leave, setLeave] = useState(entry.leaveHours ?? 0);
-  const [saving, setSaving] = useState(false);
+  const [avail, setAvail]       = useState(entry.availableHours ?? 0);
+  const [leaveDays, setLeaveDays] = useState((entry.leaveHours ?? 0) / 9);
+  const [saving, setSaving]     = useState(false);
+
+  const leaveHours = (parseFloat(leaveDays) || 0) * 9;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...entry, available_hours: parseFloat(avail) || 0, leave_hours: parseFloat(leave) || 0 });
+      await onSave({ ...entry, available_hours: parseFloat(avail) || 0, leave_hours: leaveHours });
       onClose();
     } finally {
       setSaving(false);
@@ -243,12 +245,16 @@ function CapacityModal({ entry, onClose, onSave }) {
         </p>
         <div className="space-y-3">
           <div>
-            <label className="label text-xs">Available Hours</label>
+            <label className="label text-xs">Available Hours (override)</label>
             <input type="number" min="0" step="0.5" className="input" value={avail} onChange={e => setAvail(e.target.value)} />
+            <p className="text-[10px] text-gray-400 mt-0.5">Leave blank (0) to use default: working days × 9h</p>
           </div>
           <div>
-            <label className="label text-xs">Leave / Holiday Hours</label>
-            <input type="number" min="0" step="0.5" className="input" value={leave} onChange={e => setLeave(e.target.value)} />
+            <label className="label text-xs">Holiday / Leave Days</label>
+            <input type="number" min="0" max="5" step="0.5" className="input" value={leaveDays} onChange={e => setLeaveDays(e.target.value)} />
+            {leaveHours > 0 && (
+              <p className="text-[10px] text-amber-600 mt-0.5">{leaveDays} day{leaveDays != 1 ? 's' : ''} = {leaveHours}h deducted from capacity</p>
+            )}
           </div>
         </div>
         <div className="flex gap-2 mt-5 justify-end">

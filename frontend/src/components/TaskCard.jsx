@@ -1,10 +1,9 @@
 import StatusBadge from './StatusBadge';
 
 const TEAM_TYPE_DOT = {
-  AMO:              'bg-blue-500',
-  PJ:               'bg-indigo-500',
-  Infra:            'bg-teal-500',
-  'Review & Manage':'bg-violet-500',
+  AMO:   'bg-blue-500',
+  PJ:    'bg-indigo-500',
+  Infra: 'bg-teal-500',
 };
 
 export default function TaskCard({ task, onEdit, onDelete, showMember = false, readOnly = false }) {

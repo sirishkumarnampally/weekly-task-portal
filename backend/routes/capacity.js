@@ -115,8 +115,10 @@ router.get('/report', authenticate, requireManager, (req, res) => {
         `SELECT available_hours, leave_hours FROM capacity WHERE user_id = ? AND week_start_date = ?`
       ).get(m.id, w.weekStart);
 
-      const availableHours = cap ? cap.available_hours : w.workingDays * DEFAULT_HRS_PER_DAY;
-      const leaveHours     = cap ? cap.leave_hours : 0;
+      const leaveHours     = cap?.leave_hours || 0;
+      const availableHours = cap?.available_hours > 0
+        ? cap.available_hours
+        : Math.max(0, w.workingDays * DEFAULT_HRS_PER_DAY - leaveHours);
       const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, w.weekStart, w.weekEnd);
       const totalHours     = taskHours + monitoringHours + enhancementHours;
 
@@ -150,12 +152,11 @@ router.get('/report', authenticate, requireManager, (req, res) => {
       WHERE user_id = ? AND week_start_date >= ? AND week_start_date <= ?
     `).get(m.id, monthStart, monthEnd);
 
-    // Default total capacity if none set
     const totalWorkingDays = weeks.reduce((s, w) => s + w.workingDays, 0);
-    const availableHours   = (capAgg?.total_avail > 0)
-      ? capAgg.total_avail
-      : totalWorkingDays * DEFAULT_HRS_PER_DAY;
     const leaveHours       = capAgg?.total_leave || 0;
+    const availableHours   = capAgg?.total_avail > 0
+      ? capAgg.total_avail
+      : Math.max(0, totalWorkingDays * DEFAULT_HRS_PER_DAY - leaveHours);
 
     const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, monthStart, monthEnd);
     const totalHours = taskHours + monitoringHours + enhancementHours;
@@ -219,6 +220,34 @@ router.post('/bulk', authenticate, requireManager, (req, res) => {
 
   db.transaction((rows) => rows.forEach(r => stmt.run(r.user_id, r.week_start_date, r.available_hours || 0, r.leave_hours || 0)))(entries);
   res.json({ ok: true, count: entries.length });
+});
+
+// GET /api/capacity/my-leave?week=YYYY-MM-DD  — member's own leave for a week
+router.get('/my-leave', authenticate, (req, res) => {
+  const { week } = req.query;
+  if (!week) return res.status(400).json({ error: 'week required' });
+  const row = db.prepare(
+    'SELECT leave_hours FROM capacity WHERE user_id = ? AND week_start_date = ?'
+  ).get(req.user.id, week);
+  res.json({ leave_hours: row?.leave_hours || 0, leave_days: (row?.leave_hours || 0) / 9 });
+});
+
+// POST /api/capacity/leave  — member logs their own holiday/leave for a week
+router.post('/leave', authenticate, (req, res) => {
+  const { week_start_date, leave_days } = req.body;
+  if (!week_start_date) return res.status(400).json({ error: 'week_start_date required' });
+
+  const days       = Math.max(0, Math.min(5, parseFloat(leave_days) || 0));
+  const leaveHours = days * 9;
+
+  db.prepare(`
+    INSERT INTO capacity (user_id, week_start_date, available_hours, leave_hours)
+    VALUES (?, ?, 0, ?)
+    ON CONFLICT(user_id, week_start_date) DO UPDATE SET
+      leave_hours = excluded.leave_hours
+  `).run(req.user.id, week_start_date, leaveHours);
+
+  res.json({ ok: true, leave_days: days, leave_hours: leaveHours });
 });
 
 module.exports = router;

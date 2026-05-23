@@ -6,6 +6,7 @@ import MemberDashboard from './pages/MemberDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ManageUsers from './pages/ManageUsers';
 import CapacityReport from './pages/CapacityReport';
+import Stats from './pages/Stats';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children, role }) {
@@ -48,6 +49,11 @@ export default function App() {
         <Route path="/capacity" element={
           <PrivateRoute role="manager">
             <Layout><CapacityReport /></Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/stats" element={
+          <PrivateRoute role="manager">
+            <Layout><Stats /></Layout>
           </PrivateRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
