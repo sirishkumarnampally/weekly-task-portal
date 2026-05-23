@@ -109,17 +109,24 @@ router.get('/report', authenticate, requireManager, (req, res) => {
   const DEFAULT_HRS_PER_DAY = 9;
 
   // Build per-week member rows
+  // dispStart/dispEnd are clipped to the month boundary:
+  //   • Week 1  : dispStart = 1st of month  (not the Sunday before it)
+  //   • Last wk : dispEnd   = last day of month (not the Saturday after it)
+  //   • Mid wks : dispStart = weekStart, dispEnd = weekEnd (full Sun–Sat)
+  // Using dispStart/dispEnd ensures no cross-month data bleeds in or out.
   const weeksData = weeks.map(w => {
     const memberRows = members.map(m => {
+      // Capacity record is keyed by dispStart so partial first/last weeks
+      // correctly fall back to the formula (workingDays × 9h) when no record exists.
       const cap = db.prepare(
         `SELECT available_hours, leave_hours FROM capacity WHERE user_id = ? AND week_start_date = ?`
-      ).get(m.id, w.weekStart);
+      ).get(m.id, w.dispStart);
 
       const leaveHours     = cap?.leave_hours || 0;
       const availableHours = cap?.available_hours > 0
         ? cap.available_hours
         : Math.max(0, w.workingDays * DEFAULT_HRS_PER_DAY - leaveHours);
-      const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, w.weekStart, w.weekEnd);
+      const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, w.dispStart, w.dispEnd);
       const totalHours     = taskHours + monitoringHours + enhancementHours;
 
       return {
