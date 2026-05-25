@@ -215,11 +215,11 @@ export default function Login() {
             </Link>
           </p>
 
-          {/* Demo credentials */}
+          {/* Quick access credentials */}
           <div className="mt-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="flex-1 h-px bg-slate-200" />
-              <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Demo Accounts</p>
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Quick Access</p>
               <div className="flex-1 h-px bg-slate-200" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -228,21 +228,21 @@ export default function Login() {
                 className="bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl p-3 text-left transition-all shadow-sm group"
               >
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span>👔</span>
-                  <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Manager</span>
+                  <span>🛡️</span>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Admin</span>
                 </div>
                 <p className="text-slate-600 text-xs">manager@demo.com</p>
                 <p className="text-slate-400 text-xs">manager123</p>
               </button>
               <button
-                onClick={() => fillDemo('bob@demo.com', 'member123')}
+                onClick={() => fillDemo('himanshu@nissan.com', 'member123')}
                 className="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-3 text-left transition-all shadow-sm group"
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span>👤</span>
-                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">VPM Member</span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Nissan Member</span>
                 </div>
-                <p className="text-slate-600 text-xs">bob@demo.com</p>
+                <p className="text-slate-600 text-xs">himanshu@nissan.com</p>
                 <p className="text-slate-400 text-xs">member123</p>
               </button>
             </div>

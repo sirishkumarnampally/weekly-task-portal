@@ -68,41 +68,53 @@ if (userCount.count === 0) {
     'INSERT INTO users (name, email, role, team, password_hash) VALUES (?, ?, ?, ?, ?)'
   );
 
-  // Managers
-  insert.run('Nampally Sirish Kumar', 'manager@demo.com', 'manager', 'VPM',  hash('manager123'));
+  // Manager
+  insert.run('Nampally Sirish Kumar', 'manager@demo.com', 'manager', 'VPM', hash('manager123'));
 
-  // VPM team
-  insert.run('Bob Smith',   'bob@demo.com',   'member', 'VPM',  hash('member123'));
-  insert.run('Carol Jones', 'carol@demo.com', 'member', 'VPM',  hash('member123'));
+  // VPM members
+  const vpmMembers = [
+    ['Himanshu',   'himanshu@nissan.com'],
+    ['Malik',      'malik@nissan.com'],
+    ['Sachin',     'sachin@nissan.com'],
+    ['Ramana',     'ramana@nissan.com'],
+    ['Aishwarya',  'aishwarya@nissan.com'],
+    ['Venkat',     'venkat@nissan.com'],
+    ['Bharat',     'bharat@nissan.com'],
+    ['Shiv',       'shiv@nissan.com'],
+    ['Anusha',     'anusha@nissan.com'],
+    ['Samir',      'samir@nissan.com'],
+    ['Naresh',     'naresh@nissan.com'],
+  ];
+  for (const [name, email] of vpmMembers) {
+    insert.run(name, email, 'member', 'VPM', hash('member123'));
+  }
 
-  // CWGW team
-  insert.run('David Lee',   'david@demo.com', 'member', 'CWGW', hash('member123'));
-  insert.run('Eva Chen',    'eva@demo.com',   'member', 'CWGW', hash('member123'));
+  // CWGW members
+  const cwgwMembers = [
+    ['Sagar',      'sagar@nissan.com'],
+    ['Syed',       'syed@nissan.com'],
+    ['Lohtih',     'lohtih@nissan.com'],
+    ['Arjun',      'arjun@nissan.com'],
+    ['Hari',       'hari@nissan.com'],
+    ['Sai Videla', 'saividela@nissan.com'],
+    ['Raju',       'raju@nissan.com'],
+    ['Mohan',      'mohan@nissan.com'],
+    ['Santhosh',   'santhosh@nissan.com'],
+    ['Sushma',     'sushma@nissan.com'],
+  ];
+  for (const [name, email] of cwgwMembers) {
+    insert.run(name, email, 'member', 'CWGW', hash('member123'));
+  }
 
-  // Get inserted IDs
-  const bob   = db.prepare("SELECT id FROM users WHERE email='bob@demo.com'").get();
-  const carol = db.prepare("SELECT id FROM users WHERE email='carol@demo.com'").get();
-  const david = db.prepare("SELECT id FROM users WHERE email='david@demo.com'").get();
-  const eva   = db.prepare("SELECT id FROM users WHERE email='eva@demo.com'").get();
-
+  // Seed a few demo tasks for Himanshu
+  const himanshu = db.prepare("SELECT id FROM users WHERE email='himanshu@nissan.com'").get();
   const taskInsert = db.prepare(`
     INSERT INTO tasks (user_id, week_start_date, title, description, priority, status, estimated_hours, actual_hours, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-
   const week = '2026-05-19';
-
-  // VPM tasks
-  taskInsert.run(bob.id,   week, 'Setup CI/CD pipeline',            'Configure GitHub Actions for automated testing', 'High',   'Completed',   8, 10, 'Ran into Docker issues, resolved with workaround');
-  taskInsert.run(bob.id,   week, 'Write unit tests for auth module', '',                                              'Medium', 'In Progress', 6,  4, '');
-  taskInsert.run(carol.id, week, 'Design new landing page mockups',  'Use Figma to create 3 variants',               'High',   'Completed',  12, 11, 'Client approved variant 2');
-  taskInsert.run(carol.id, week, 'Implement dark mode toggle',       '',                                              'Low',    'Not Started', 4,  0, '');
-
-  // CWGW tasks
-  taskInsert.run(david.id, week, 'Database schema review',           'Review and optimize existing queries',          'High',   'Blocked',     6,  2, 'Waiting for DBA approval');
-  taskInsert.run(david.id, week, 'API rate limiting implementation',  'Add throttle middleware to all endpoints',      'High',   'In Progress', 8,  5, '');
-  taskInsert.run(eva.id,   week, 'QA regression test suite',         'Full regression for v2.1 release',             'Medium', 'Not Started', 10, 0, '');
-  taskInsert.run(eva.id,   week, 'Update deployment runbook',        '',                                              'Low',    'Completed',   3,  3, 'Done, shared with team');
+  taskInsert.run(himanshu.id, week, 'VPM weekly status report',    'Compile and share team progress update',        'High',   'Completed',  4,  4, '');
+  taskInsert.run(himanshu.id, week, 'Review change requests',      'Assess and prioritise incoming CRs for sprint', 'Medium', 'In Progress', 6, 3, '');
 }
 
 module.exports = db;
