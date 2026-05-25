@@ -4,10 +4,14 @@ const cors = require('cors');
 
 const app = express();
 
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-  : ['http://localhost:5173'];
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+// CORS_ORIGIN=* (e.g. Codespaces) → reflect request origin (supports credentials + all hosts)
+// CORS_ORIGIN=https://a.com,https://b.com → allowlist
+// unset → localhost dev default
+const rawCorsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin = (!rawCorsOrigin || rawCorsOrigin === '*')
+  ? true
+  : rawCorsOrigin.split(',').map(o => o.trim());
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 
 app.use('/api/auth',     require('./routes/auth'));

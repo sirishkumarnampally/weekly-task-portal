@@ -1,0 +1,36 @@
+{
+  "name": "Weekly Task Portal",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "installDockerBuildx": true,
+      "version": "latest",
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+
+  "forwardPorts": [8080, 3001],
+  "portsAttributes": {
+    "8080": {
+      "label": "Web App",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "API Backend",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // First launch: build images and start all services
+  "postCreateCommand": "docker compose -f docker-compose.codespaces.yml up --build -d && echo '✅ App running at http://localhost:8080'",
+
+  // Subsequent starts (Codespace resumed): restart stopped containers without rebuilding
+  "postStartCommand": "docker compose -f docker-compose.codespaces.yml up -d",
+
+  "remoteUser": "vscode"
+}
