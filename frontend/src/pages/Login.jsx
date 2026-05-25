@@ -229,7 +229,7 @@ export default function Login() {
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span>🛡️</span>
-                  <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Admin</span>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">testadmin</span>
                 </div>
                 <p className="text-slate-600 text-xs">manager@demo.com</p>
                 <p className="text-slate-400 text-xs">manager123</p>
@@ -240,7 +240,7 @@ export default function Login() {
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span>👤</span>
-                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Nissan Member</span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">testuser</span>
                 </div>
                 <p className="text-slate-600 text-xs">himanshu@nissan.com</p>
                 <p className="text-slate-400 text-xs">member123</p>
