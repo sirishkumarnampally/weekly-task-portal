@@ -357,21 +357,15 @@ export default function CapacityReport() {
         </div>
         <div>
           <label className="label text-xs">Team</label>
-          <div className="flex gap-1">
-            {[['', 'All'], ['VPM', 'VPM'], ['CWGW', 'CWGW']].map(([val, lbl]) => (
-              <button
-                key={val}
-                onClick={() => setTeam(val)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                  team === val
-                    ? val === 'VPM'  ? 'bg-blue-600 text-white border-blue-600'
-                    : val === 'CWGW' ? 'bg-violet-600 text-white border-violet-600'
-                    : 'bg-gray-800 text-white border-gray-800'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                }`}
-              >{lbl}</button>
-            ))}
-          </div>
+          <select
+            className="input text-sm w-36"
+            value={team}
+            onChange={e => setTeam(e.target.value)}
+          >
+            <option value="">All Teams</option>
+            <option value="VPM">VPM</option>
+            <option value="CWGW">CWGW</option>
+          </select>
         </div>
         <div className="ml-auto flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
           <span className="text-slate-500 text-xs">⏱</span>

@@ -12,19 +12,39 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const VALID_PRIORITIES = ['High', 'Medium', 'Low'];
 const VALID_STATUSES   = ['Not Started', 'In Progress', 'Completed', 'Blocked'];
 
-// Snap any date string to its Sunday (week_start_date key used throughout the app)
+// Snap any date (string or Excel serial) to its Sunday
 function toSunday(raw) {
-  // Handle Excel serial numbers
   let dateStr = String(raw ?? '').trim();
+  if (!dateStr) return null;
   if (!isNaN(dateStr) && Number(dateStr) > 1000) {
     const d = XLSX.SSF.parse_date_code(Number(dateStr));
     dateStr = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
-  if (!dateStr) return null;
   const d = new Date(dateStr + 'T00:00:00Z');
   if (isNaN(d)) return null;
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay()); // back to Sunday
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
   return d.toISOString().slice(0, 10);
+}
+
+// Return every Sunday between startRaw's week and endRaw's week (inclusive)
+function getWeeksBetween(startRaw, endRaw) {
+  const s = toSunday(startRaw);
+  const e = toSunday(endRaw) || s;
+  if (!s) return [];
+  const weeks = [];
+  const cur = new Date(s + 'T00:00:00Z');
+  const last = new Date(e + 'T00:00:00Z');
+  while (cur <= last) {
+    weeks.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 7);
+  }
+  return weeks;
+}
+
+function currentSunday() {
+  const now = new Date();
+  now.setUTCDate(now.getUTCDate() - now.getUTCDay());
+  return now.toISOString().slice(0, 10);
 }
 
 function parseUploadRows(rows, selfUserId, isManager, emailToId) {
@@ -38,13 +58,17 @@ function parseUploadRows(rows, selfUserId, isManager, emailToId) {
     const title = r['task title'] || r['title'] || r['task'] || '';
     if (!title) { errors.push(`Row ${i + 2}: Task Title is required`); continue; }
 
-    // Week date — snap to Sunday
-    const rawDate = r['week start date'] || r['week start'] || r['week'] || '';
-    const weekStart = toSunday(rawDate) || (() => {
-      const now = new Date();
-      now.setUTCDate(now.getUTCDate() - now.getUTCDay());
-      return now.toISOString().slice(0, 10);
-    })();
+    // Accept either Start Date + End Date  OR  Week Start Date (legacy)
+    const startRaw = r['start date'] || r['start'] || r['week start date'] || r['week start'] || r['week'] || '';
+    const endRaw   = r['end date']   || r['end']   || '';
+
+    const weeks = endRaw
+      ? getWeeksBetween(startRaw, endRaw)
+      : [toSunday(startRaw) || currentSunday()];
+
+    if (weeks.length === 0) {
+      errors.push(`Row ${i + 2}: Invalid Start Date "${startRaw}" — skipped`); continue;
+    }
 
     // User assignment
     let userId = selfUserId;
@@ -56,20 +80,36 @@ function parseUploadRows(rows, selfUserId, isManager, emailToId) {
       }
     }
 
-    valid.push({
+    const totalEst = parseFloat(r['total estimated hours'] || r['estimated hours'] || r['est hours'] || r['est. hours'] || 0) || 0;
+    const totalAct = parseFloat(r['total actual hours']    || r['actual hours']    || r['act hours'] || r['act. hours'] || 0) || 0;
+    const estPerWk = weeks.length > 1 ? parseFloat((totalEst / weeks.length).toFixed(2)) : totalEst;
+    const actPerWk = weeks.length > 1 ? parseFloat((totalAct / weeks.length).toFixed(2)) : totalAct;
+
+    const base = {
       user_id:         userId,
-      week_start_date: weekStart,
       title,
       description:     r['description'] || r['desc'] || '',
-      priority:        VALID_PRIORITIES.includes(r['priority'])  ? r['priority'] : 'Medium',
-      status:          VALID_STATUSES.includes(r['status'])      ? r['status']   : 'Not Started',
+      priority:        VALID_PRIORITIES.includes(r['priority']) ? r['priority'] : 'Medium',
+      status:          VALID_STATUSES.includes(r['status'])     ? r['status']   : 'Not Started',
       task_type:       r['task type']  || '',
       requester:       r['requester']  || '',
       owner:           r['owner']      || '',
       team_type:       r['team type']  || '',
-      estimated_hours: parseFloat(r['estimated hours'] || r['est hours'] || r['est. hours'] || 0) || 0,
-      actual_hours:    parseFloat(r['actual hours']    || r['act hours'] || r['act. hours'] || 0) || 0,
-      notes:           r['notes'] || '',
+      notes:           r['notes']      || '',
+      // Carry originals for preview display
+      _startDate:      toSunday(startRaw) || currentSunday(),
+      _endDate:        toSunday(endRaw)   || toSunday(startRaw) || currentSunday(),
+      _totalWeeks:     weeks.length,
+    };
+
+    weeks.forEach((weekStart, wi) => {
+      valid.push({
+        ...base,
+        week_start_date: weekStart,
+        estimated_hours: estPerWk,
+        actual_hours:    actPerWk,
+        _weekIndex:      wi + 1,   // for preview label "Week 1 of 3"
+      });
     });
   }
   return { valid, errors };
@@ -79,43 +119,91 @@ function parseUploadRows(rows, selfUserId, isManager, emailToId) {
 router.get('/upload-template', authenticate, (req, res) => {
   const isManager = req.user.role === 'manager';
   const wb  = XLSX.utils.book_new();
-  const now = new Date();
-  now.setUTCDate(now.getUTCDate() - now.getUTCDay());
-  const week = now.toISOString().slice(0, 10);
+  const sun = currentSunday();
 
-  const base = {
-    'Week Start Date': week, 'Task Title': 'Example task', 'Description': 'Brief description',
-    'Priority': 'High', 'Status': 'In Progress', 'Task Type': 'Regular',
-    'Requester': 'Manager', 'Owner': req.user.name, 'Team Type': req.user.team || '',
-    'Estimated Hours': 4, 'Actual Hours': 2, 'Notes': '',
-  };
-  const rows = isManager
-    ? [
-        { 'Member Email': 'himanshu@nissan.com', ...base, 'Task Title': 'VPM weekly report' },
-        { 'Member Email': 'malik@nissan.com',    ...base, 'Task Title': 'CR review',  'Priority': 'Medium', 'Status': 'Not Started', 'Actual Hours': 0 },
-      ]
-    : [
-        { ...base },
-        { ...base, 'Task Title': 'Second task', 'Priority': 'Medium', 'Status': 'Not Started', 'Actual Hours': 0 },
-      ];
+  // For a sample two-week span
+  const twoWeekEnd = (() => {
+    const d = new Date(sun + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 13); // 2 weeks later (Saturday)
+    return d.toISOString().slice(0, 10);
+  })();
+
+  let rows, colWidths;
+
+  if (isManager) {
+    // Manager template: Start Date + End Date (spans map to multiple weeks)
+    rows = [
+      {
+        'Member Email': 'himanshu@nissan.com',
+        'Task Title': 'VPM sprint planning',
+        'Start Date': sun, 'End Date': sun,
+        'Description': 'Single-week task',
+        'Priority': 'High', 'Status': 'In Progress',
+        'Task Type': 'Regular', 'Requester': 'Manager', 'Owner': 'Himanshu',
+        'Team Type': 'VPM', 'Total Estimated Hours': 8, 'Total Actual Hours': 5, 'Notes': '',
+      },
+      {
+        'Member Email': 'malik@nissan.com',
+        'Task Title': 'CR review & implementation',
+        'Start Date': sun, 'End Date': twoWeekEnd,
+        'Description': 'Spans two weeks — hours split evenly',
+        'Priority': 'Medium', 'Status': 'Not Started',
+        'Task Type': 'Irregular', 'Requester': 'TL', 'Owner': 'Malik',
+        'Team Type': 'VPM', 'Total Estimated Hours': 16, 'Total Actual Hours': 0, 'Notes': '',
+      },
+      {
+        'Member Email': 'sagar@nissan.com',
+        'Task Title': 'CWGW infra health check',
+        'Start Date': sun, 'End Date': sun,
+        'Description': '',
+        'Priority': 'High', 'Status': 'Not Started',
+        'Task Type': 'Monitoring', 'Requester': 'Manager', 'Owner': 'Sagar',
+        'Team Type': 'CWGW', 'Total Estimated Hours': 6, 'Total Actual Hours': 0, 'Notes': '',
+      },
+    ];
+    colWidths = [
+      { wch: 26 }, { wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 30 },
+      { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
+      { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 20 },
+    ];
+  } else {
+    // Member template: Week Start Date (single-week, assigned to self)
+    rows = [
+      {
+        'Week Start Date': sun, 'Task Title': 'My task this week',
+        'Description': 'Brief description', 'Priority': 'High', 'Status': 'In Progress',
+        'Task Type': 'Regular', 'Requester': 'Manager', 'Owner': req.user.name,
+        'Team Type': req.user.team || '', 'Estimated Hours': 4, 'Actual Hours': 2, 'Notes': '',
+      },
+      {
+        'Week Start Date': sun, 'Task Title': 'Second task',
+        'Description': '', 'Priority': 'Medium', 'Status': 'Not Started',
+        'Task Type': 'Monitoring', 'Requester': 'TL', 'Owner': req.user.name,
+        'Team Type': req.user.team || '', 'Estimated Hours': 8, 'Actual Hours': 0, 'Notes': '',
+      },
+    ];
+    colWidths = [
+      { wch: 16 }, { wch: 32 }, { wch: 30 }, { wch: 10 }, { wch: 14 },
+      { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 20 },
+    ];
+  }
 
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = (isManager ? [{ wch: 26 }] : []).concat([
-    { wch: 16 }, { wch: 32 }, { wch: 30 }, { wch: 10 }, { wch: 14 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 20 },
-  ]);
+  ws['!cols'] = colWidths;
   XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
 
   // Reference sheet
   const ref = [
-    { Column: 'Priority',        'Valid Values': 'High | Medium | Low',                                     Default: 'Medium' },
-    { Column: 'Status',          'Valid Values': 'Not Started | In Progress | Completed | Blocked',          Default: 'Not Started' },
-    { Column: 'Week Start Date', 'Valid Values': 'YYYY-MM-DD — snapped to Sunday automatically',             Default: 'current week' },
-    { Column: 'Task Type',       'Valid Values': 'Regular | Monitoring | Enhancement | Support | Irregular', Default: '' },
+    { Column: 'Priority',   'Valid Values': 'High | Medium | Low',                                     Default: 'Medium' },
+    { Column: 'Status',     'Valid Values': 'Not Started | In Progress | Completed | Blocked',          Default: 'Not Started' },
+    { Column: 'Task Type',  'Valid Values': 'Regular | Monitoring | Enhancement | Support | Irregular', Default: '' },
+    { Column: 'Start Date / End Date (admin)', 'Valid Values': 'YYYY-MM-DD — auto-snapped to Sunday; tasks spanning multiple weeks create one entry per week', Default: 'current week' },
+    { Column: 'Week Start Date (member)',       'Valid Values': 'YYYY-MM-DD — auto-snapped to Sunday',  Default: 'current week' },
+    { Column: 'Total Estimated Hours (admin)',  'Valid Values': 'Total hours — split evenly across all spanned weeks', Default: '0' },
   ];
-  if (isManager) ref.unshift({ Column: 'Member Email', 'Valid Values': 'Member\'s login email', Default: '(required for manager)' });
+  if (isManager) ref.unshift({ Column: 'Member Email', 'Valid Values': 'Member login email (himanshu@nissan.com, etc.)', Default: '(required)' });
   const refWs = XLSX.utils.json_to_sheet(ref);
-  refWs['!cols'] = [{ wch: 20 }, { wch: 52 }, { wch: 22 }];
+  refWs['!cols'] = [{ wch: 36 }, { wch: 64 }, { wch: 22 }];
   XLSX.utils.book_append_sheet(wb, refWs, 'Field Reference');
 
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

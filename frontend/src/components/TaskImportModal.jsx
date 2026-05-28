@@ -198,43 +198,71 @@ export default function TaskImportModal({ isOpen, onClose, onImported, isManager
                 <div className="p-10 text-center text-gray-400">
                   <p className="text-3xl mb-2">🚫</p>
                   <p className="text-sm font-medium">No valid tasks found in the file</p>
-                  <p className="text-xs mt-1">Check that Task Title and Week Start Date columns are present</p>
+                  <p className="text-xs mt-1">Check that Task Title and Start Date (or Week Start Date) columns are present</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-xs">
-                    <thead className="bg-gray-50 text-gray-500 uppercase tracking-wide">
-                      <tr>
-                        {isManager && <th className="px-3 py-2 text-left font-semibold">Member</th>}
-                        <th className="px-3 py-2 text-left font-semibold">Week</th>
-                        <th className="px-3 py-2 text-left font-semibold">Task Title</th>
-                        <th className="px-3 py-2 text-left font-semibold">Priority</th>
-                        <th className="px-3 py-2 text-left font-semibold">Status</th>
-                        <th className="px-3 py-2 text-left font-semibold">Type</th>
-                        <th className="px-3 py-2 text-right font-semibold">Est h</th>
-                        <th className="px-3 py-2 text-right font-semibold">Act h</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {preview.tasks.map((t, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
-                          {isManager && <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{t.member_name}</td>}
-                          <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.week_start_date}</td>
-                          <td className="px-3 py-2 text-gray-900 max-w-[180px] truncate" title={t.title}>{t.title}</td>
-                          <td className={`px-3 py-2 whitespace-nowrap ${PRIORITY_COLOR[t.priority] || ''}`}>{t.priority}</td>
-                          <td className="px-3 py-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_COLOR[t.status] || 'bg-gray-100 text-gray-600'}`}>
-                              {t.status}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-gray-500">{t.task_type || '—'}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{t.estimated_hours || 0}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{t.actual_hours || 0}</td>
+                <>
+                  {/* Summary banner */}
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+                    <span className="text-base">📊</span>
+                    <span>
+                      <strong>{preview.count}</strong> task entr{preview.count !== 1 ? 'ies' : 'y'} across{' '}
+                      <strong>{new Set(preview.tasks.map(t => t.week_start_date)).size}</strong> week{new Set(preview.tasks.map(t => t.week_start_date)).size !== 1 ? 's' : ''}.
+                      {preview.tasks.some(t => t._totalWeeks > 1) && ' Multi-week tasks have been split — hours divided evenly per week.'}
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500 uppercase tracking-wide">
+                        <tr>
+                          {isManager && <th className="px-3 py-2 text-left font-semibold">Member</th>}
+                          <th className="px-3 py-2 text-left font-semibold">Task Title</th>
+                          <th className="px-3 py-2 text-left font-semibold">Start → End</th>
+                          <th className="px-3 py-2 text-left font-semibold">Week</th>
+                          <th className="px-3 py-2 text-left font-semibold">Priority</th>
+                          <th className="px-3 py-2 text-left font-semibold">Status</th>
+                          <th className="px-3 py-2 text-left font-semibold">Type</th>
+                          <th className="px-3 py-2 text-right font-semibold">Est h</th>
+                          <th className="px-3 py-2 text-right font-semibold">Act h</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {preview.tasks.map((t, i) => (
+                          <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
+                            {isManager && (
+                              <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{t.member_name}</td>
+                            )}
+                            <td className="px-3 py-2 text-gray-900 max-w-[160px]">
+                              <div className="truncate font-medium" title={t.title}>{t.title}</div>
+                              {t._totalWeeks > 1 && (
+                                <span className="inline-block mt-0.5 text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-semibold">
+                                  wk {t._weekIndex}/{t._totalWeeks}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
+                              {t._startDate === t._endDate
+                                ? t._startDate
+                                : <>{t._startDate}<br /><span className="text-gray-300">→ {t._endDate}</span></>
+                              }
+                            </td>
+                            <td className="px-3 py-2 text-blue-700 font-semibold whitespace-nowrap">{t.week_start_date}</td>
+                            <td className={`px-3 py-2 whitespace-nowrap ${PRIORITY_COLOR[t.priority] || ''}`}>{t.priority}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_COLOR[t.status] || 'bg-gray-100 text-gray-600'}`}>
+                                {t.status}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-gray-500">{t.task_type || '—'}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{t.estimated_hours || 0}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{t.actual_hours || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           )}
