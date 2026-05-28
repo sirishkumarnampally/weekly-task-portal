@@ -108,25 +108,28 @@ router.get('/report', authenticate, requireManager, (req, res) => {
 
   const DEFAULT_HRS_PER_DAY = 9;
 
-  // Build per-week member rows
-  // dispStart/dispEnd are clipped to the month boundary:
-  //   • Week 1  : dispStart = 1st of month  (not the Sunday before it)
-  //   • Last wk : dispEnd   = last day of month (not the Saturday after it)
-  //   • Mid wks : dispStart = weekStart, dispEnd = weekEnd (full Sun–Sat)
-  // Using dispStart/dispEnd ensures no cross-month data bleeds in or out.
+  // weekStart  = actual Sunday (matches what members save leave against)
+  // dispStart/dispEnd = month-clipped boundaries used only for task queries
+  //   to prevent cross-month task bleeding.
+  const firstWeekStart = weeks[0].weekStart;
+  const lastWeekStart  = weeks[weeks.length - 1].weekStart;
+
   const weeksData = weeks.map(w => {
     const memberRows = members.map(m => {
-      // Capacity record is keyed by dispStart so partial first/last weeks
-      // correctly fall back to the formula (workingDays × 9h) when no record exists.
+      // Capacity records (leave + overrides) are keyed by weekStart (Sunday).
+      // Members save leave via the week picker which uses Sunday keys.
       const cap = db.prepare(
         `SELECT available_hours, leave_hours FROM capacity WHERE user_id = ? AND week_start_date = ?`
-      ).get(m.id, w.dispStart);
+      ).get(m.id, w.weekStart);
 
       const leaveHours     = cap?.leave_hours || 0;
       const availableHours = cap?.available_hours > 0
         ? cap.available_hours
         : Math.max(0, w.workingDays * DEFAULT_HRS_PER_DAY - leaveHours);
-      const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, w.dispStart, w.dispEnd);
+      // Task query lower bound = weekStart so partial-first-week tasks (stored
+      // under prior-month Sunday) are included; upper bound = dispEnd to prevent
+      // next-month tasks bleeding in on the last partial week.
+      const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, w.weekStart, w.dispEnd);
       const totalHours     = taskHours + monitoringHours + enhancementHours;
 
       return {
@@ -150,14 +153,15 @@ router.get('/report', authenticate, requireManager, (req, res) => {
     return { ...w, members: memberRows, totalHours, maxAvail, actualManWeeks };
   });
 
-  // Monthly totals
+  // Monthly totals — use weekStart boundaries so partial first/last weeks
+  // (whose Sunday may fall outside the calendar month) are included correctly.
   const monthlyMembers = members.map(m => {
     const capAgg = db.prepare(`
       SELECT COALESCE(SUM(available_hours), 0) as total_avail,
              COALESCE(SUM(leave_hours), 0)     as total_leave
       FROM capacity
       WHERE user_id = ? AND week_start_date >= ? AND week_start_date <= ?
-    `).get(m.id, monthStart, monthEnd);
+    `).get(m.id, firstWeekStart, lastWeekStart);
 
     const totalWorkingDays = weeks.reduce((s, w) => s + w.workingDays, 0);
     const leaveHours       = capAgg?.total_leave || 0;
@@ -165,7 +169,7 @@ router.get('/report', authenticate, requireManager, (req, res) => {
       ? capAgg.total_avail
       : Math.max(0, totalWorkingDays * DEFAULT_HRS_PER_DAY - leaveHours);
 
-    const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, monthStart, monthEnd);
+    const { taskCount, taskHours, monitoringHours, enhancementHours } = getTaskHours(m.id, firstWeekStart, lastWeekStart);
     const totalHours = taskHours + monitoringHours + enhancementHours;
 
     return {
@@ -236,16 +240,24 @@ router.get('/leave-summary', authenticate, requireManager, (req, res) => {
   if (!week && !month) return res.status(400).json({ error: 'week or month required' });
 
   if (month) {
-    // Aggregate leave per user for the entire month
+    // Use getWeeksForMonth so we query by weekStart (Sunday) range — the same
+    // keys members use when saving leave. strftime('%Y-%m', ...) would miss the
+    // first week when its Sunday falls in the prior calendar month.
+    const [ly, lm] = month.split('-').map(Number);
+    const monthWeeksList = getWeeksForMonth(ly, lm);
+    const firstWkStart = monthWeeksList[0].weekStart;
+    const lastWkStart  = monthWeeksList[monthWeeksList.length - 1].weekStart;
+
+    // Aggregate leave per user across all weeks of the month
     let q = `
       SELECT u.id, u.name, u.team,
              COALESCE(SUM(c.leave_hours), 0) AS leave_hours
       FROM users u
       LEFT JOIN capacity c ON c.user_id = u.id
-        AND strftime('%Y-%m', c.week_start_date) = ?
+        AND c.week_start_date >= ? AND c.week_start_date <= ?
       WHERE u.role = 'member'
     `;
-    const p = [month];
+    const p = [firstWkStart, lastWkStart];
     if (team) { q += ' AND u.team = ?'; p.push(team); }
     q += ' GROUP BY u.id, u.name, u.team ORDER BY u.team, u.name';
     const members = db.prepare(q).all(...p);
@@ -256,10 +268,10 @@ router.get('/leave-summary', authenticate, requireManager, (req, res) => {
       FROM capacity c
       JOIN users u ON c.user_id = u.id
       WHERE u.role = 'member'
-        AND strftime('%Y-%m', c.week_start_date) = ?
+        AND c.week_start_date >= ? AND c.week_start_date <= ?
         AND c.leave_hours > 0
     `;
-    const wp = [month];
+    const wp = [firstWkStart, lastWkStart];
     if (team) { wq += ' AND u.team = ?'; wp.push(team); }
     wq += ' ORDER BY c.week_start_date';
     const weekRows = db.prepare(wq).all(...wp);

@@ -90,7 +90,7 @@ function WeekBlock({ week, onEditCapacity }) {
               <td
                 className="text-center px-1 py-1 border border-gray-200 text-slate-700 font-semibold cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
                 title="Click to set capacity"
-                onClick={() => onEditCapacity(m, week.dispStart)}
+                onClick={() => onEditCapacity(m, week.weekStart)}
               >
                 {num(m.availableHours)}
               </td>
