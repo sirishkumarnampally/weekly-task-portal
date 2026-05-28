@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import TaskCard from '../components/TaskCard';
 import TaskFormModal from '../components/TaskFormModal';
+import TaskImportModal from '../components/TaskImportModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { weekOptions, currentWeekStart, formatWeekLabel } from '../utils/weekUtils';
 
@@ -18,8 +19,9 @@ export default function MemberDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(currentWeekStart());
   const [viewMode, setViewMode] = useState('team');   // 'team' | 'mine'
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
+  const [modalOpen,    setModalOpen]    = useState(false);
+  const [importOpen,   setImportOpen]   = useState(false);
+  const [editingTask,  setEditingTask]  = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [leaveDays, setLeaveDays] = useState('0');
   const [savedLeaveHours, setSavedLeaveHours] = useState(0);
@@ -143,9 +145,17 @@ export default function MemberDashboard() {
               : `All tasks across your ${user?.team} team — you can only edit your own`}
           </p>
         </div>
-        <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="btn-primary flex items-center gap-2">
-          <span>+</span> Add Task
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-xl transition-colors"
+          >
+            📥 Import
+          </button>
+          <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="btn-primary flex items-center gap-2">
+            <span>+</span> Add Task
+          </button>
+        </div>
       </div>
 
       {/* Week + View toggles */}
@@ -303,6 +313,13 @@ export default function MemberDashboard() {
         memberName={user?.name}
         isManager={false}
         userTeam={user?.team}
+      />
+
+      <TaskImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => { setImportOpen(false); fetchTasks(); toast.success('Tasks imported successfully!'); }}
+        isManager={false}
       />
 
       <ConfirmDialog

@@ -1,8 +1,192 @@
 const express = require('express');
-const db = require('../db/database');
+const multer  = require('multer');
+const XLSX    = require('xlsx');
+const db      = require('../db/database');
 const { authenticate, requireManager } = require('../middleware/auth');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// ── Helpers for Excel task upload ─────────────────────────────────────────────
+
+const VALID_PRIORITIES = ['High', 'Medium', 'Low'];
+const VALID_STATUSES   = ['Not Started', 'In Progress', 'Completed', 'Blocked'];
+
+// Snap any date string to its Sunday (week_start_date key used throughout the app)
+function toSunday(raw) {
+  // Handle Excel serial numbers
+  let dateStr = String(raw ?? '').trim();
+  if (!isNaN(dateStr) && Number(dateStr) > 1000) {
+    const d = XLSX.SSF.parse_date_code(Number(dateStr));
+    dateStr = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00Z');
+  if (isNaN(d)) return null;
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay()); // back to Sunday
+  return d.toISOString().slice(0, 10);
+}
+
+function parseUploadRows(rows, selfUserId, isManager, emailToId) {
+  const valid = [], errors = [];
+
+  for (const [i, raw] of rows.entries()) {
+    const r = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [k.toLowerCase().trim(), String(v ?? '').trim()])
+    );
+
+    const title = r['task title'] || r['title'] || r['task'] || '';
+    if (!title) { errors.push(`Row ${i + 2}: Task Title is required`); continue; }
+
+    // Week date — snap to Sunday
+    const rawDate = r['week start date'] || r['week start'] || r['week'] || '';
+    const weekStart = toSunday(rawDate) || (() => {
+      const now = new Date();
+      now.setUTCDate(now.getUTCDate() - now.getUTCDay());
+      return now.toISOString().slice(0, 10);
+    })();
+
+    // User assignment
+    let userId = selfUserId;
+    if (isManager) {
+      const email = (r['member email'] || r['email'] || '').toLowerCase();
+      if (email) {
+        if (!emailToId[email]) { errors.push(`Row ${i + 2}: Unknown member "${email}" — skipped`); continue; }
+        userId = emailToId[email];
+      }
+    }
+
+    valid.push({
+      user_id:         userId,
+      week_start_date: weekStart,
+      title,
+      description:     r['description'] || r['desc'] || '',
+      priority:        VALID_PRIORITIES.includes(r['priority'])  ? r['priority'] : 'Medium',
+      status:          VALID_STATUSES.includes(r['status'])      ? r['status']   : 'Not Started',
+      task_type:       r['task type']  || '',
+      requester:       r['requester']  || '',
+      owner:           r['owner']      || '',
+      team_type:       r['team type']  || '',
+      estimated_hours: parseFloat(r['estimated hours'] || r['est hours'] || r['est. hours'] || 0) || 0,
+      actual_hours:    parseFloat(r['actual hours']    || r['act hours'] || r['act. hours'] || 0) || 0,
+      notes:           r['notes'] || '',
+    });
+  }
+  return { valid, errors };
+}
+
+// ── GET /api/tasks/upload-template  (must be before /:id) ────────────────────
+router.get('/upload-template', authenticate, (req, res) => {
+  const isManager = req.user.role === 'manager';
+  const wb  = XLSX.utils.book_new();
+  const now = new Date();
+  now.setUTCDate(now.getUTCDate() - now.getUTCDay());
+  const week = now.toISOString().slice(0, 10);
+
+  const base = {
+    'Week Start Date': week, 'Task Title': 'Example task', 'Description': 'Brief description',
+    'Priority': 'High', 'Status': 'In Progress', 'Task Type': 'Regular',
+    'Requester': 'Manager', 'Owner': req.user.name, 'Team Type': req.user.team || '',
+    'Estimated Hours': 4, 'Actual Hours': 2, 'Notes': '',
+  };
+  const rows = isManager
+    ? [
+        { 'Member Email': 'himanshu@nissan.com', ...base, 'Task Title': 'VPM weekly report' },
+        { 'Member Email': 'malik@nissan.com',    ...base, 'Task Title': 'CR review',  'Priority': 'Medium', 'Status': 'Not Started', 'Actual Hours': 0 },
+      ]
+    : [
+        { ...base },
+        { ...base, 'Task Title': 'Second task', 'Priority': 'Medium', 'Status': 'Not Started', 'Actual Hours': 0 },
+      ];
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = (isManager ? [{ wch: 26 }] : []).concat([
+    { wch: 16 }, { wch: 32 }, { wch: 30 }, { wch: 10 }, { wch: 14 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 20 },
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
+
+  // Reference sheet
+  const ref = [
+    { Column: 'Priority',        'Valid Values': 'High | Medium | Low',                                     Default: 'Medium' },
+    { Column: 'Status',          'Valid Values': 'Not Started | In Progress | Completed | Blocked',          Default: 'Not Started' },
+    { Column: 'Week Start Date', 'Valid Values': 'YYYY-MM-DD — snapped to Sunday automatically',             Default: 'current week' },
+    { Column: 'Task Type',       'Valid Values': 'Regular | Monitoring | Enhancement | Support | Irregular', Default: '' },
+  ];
+  if (isManager) ref.unshift({ Column: 'Member Email', 'Valid Values': 'Member\'s login email', Default: '(required for manager)' });
+  const refWs = XLSX.utils.json_to_sheet(ref);
+  refWs['!cols'] = [{ wch: 20 }, { wch: 52 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(wb, refWs, 'Field Reference');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="task_upload_template.xlsx"');
+  res.send(buf);
+});
+
+// ── POST /api/tasks/upload/preview — parse file, return rows without saving ──
+router.post('/upload/preview', authenticate, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  let wb;
+  try { wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false }); }
+  catch { return res.status(400).json({ error: 'Invalid or corrupt Excel file' }); }
+
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) return res.status(400).json({ error: 'Excel file has no sheets' });
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+  const isManager = req.user.role === 'manager';
+  const emailToId = {};
+  const idToName  = { [req.user.id]: req.user.name };
+
+  if (isManager) {
+    db.prepare(`SELECT id, email, name FROM users WHERE role = 'member'`).all()
+      .forEach(m => { emailToId[m.email.toLowerCase()] = m.id; idToName[m.id] = m.name; });
+  }
+
+  const { valid, errors } = parseUploadRows(rows, req.user.id, isManager, emailToId);
+  const tasks = valid.map(t => ({ ...t, member_name: idToName[t.user_id] || 'Unknown' }));
+  res.json({ tasks, errors, count: valid.length });
+});
+
+// ── POST /api/tasks/upload — parse and persist ────────────────────────────────
+router.post('/upload', authenticate, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  let wb;
+  try { wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false }); }
+  catch { return res.status(400).json({ error: 'Invalid or corrupt Excel file' }); }
+
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) return res.status(400).json({ error: 'Excel file has no sheets' });
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+  const isManager = req.user.role === 'manager';
+  const emailToId = {};
+  if (isManager) {
+    db.prepare(`SELECT id, email FROM users WHERE role = 'member'`).all()
+      .forEach(m => { emailToId[m.email.toLowerCase()] = m.id; });
+  }
+
+  const { valid, errors } = parseUploadRows(rows, req.user.id, isManager, emailToId);
+  if (valid.length === 0) return res.status(400).json({ error: 'No valid tasks found', details: errors });
+
+  const stmt = db.prepare(`
+    INSERT INTO tasks (user_id, week_start_date, title, description, priority, status,
+                       task_type, requester, owner, team_type, estimated_hours, actual_hours, notes, week_no)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `);
+
+  let imported = 0;
+  db.transaction(() => {
+    for (const t of valid) {
+      stmt.run(t.user_id, t.week_start_date, t.title, t.description, t.priority, t.status,
+               t.task_type, t.requester, t.owner, t.team_type, t.estimated_hours, t.actual_hours, t.notes);
+      imported++;
+    }
+  })();
+
+  res.json({ ok: true, imported, errors });
+});
 
 // Get tasks
 // - Manager: sees all tasks, optionally filtered by team/user/week/status/priority
